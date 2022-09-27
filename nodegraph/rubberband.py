@@ -50,8 +50,8 @@ class RubberBand(QtWidgets.QGraphicsItem):
         :rtype: :class:`nodegraph.rubberband.RubberBand`
 
         """
-        QtWidgets.QGraphicsItem.__init__(self, parent=None, scene=scene)
-
+        QtWidgets.QGraphicsItem.__init__(self, parent=None)
+        scene.addItem(self)
         self._source_pos = init_pos
         self._mouse_pos = init_pos
         self._outline = outline

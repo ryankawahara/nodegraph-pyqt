@@ -16,11 +16,11 @@ Edge definition including:
     * InteractiveEdge
 
 """
-import sha
+import hashlib
 from Qt import QtCore, QtGui, QtWidgets
 
-from constant import DEBUG
-from polygons import ARROW_STANDARD, ARROW_SLIM
+# from constant import DEBUG
+from .polygons import ARROW_STANDARD, ARROW_SLIM
 from .node import NodeSlot
 
 
@@ -57,8 +57,8 @@ class Edge(QtWidgets.QGraphicsItem):
         :rtype: :class:`nodegraph.edge.Edge`
 
         """
-        QtWidgets.QGraphicsItem.__init__(self, parent=None, scene=scene)
-
+        QtWidgets.QGraphicsItem.__init__(self, parent=None)
+        scene.addItem(self)
         self._source_slot = source_slot
         self._target_slot = target_slot
         self._outline = outline
@@ -74,7 +74,7 @@ class Edge(QtWidgets.QGraphicsItem):
         self.setToolTip(self._hash)
 
         # Hash the hash
-        self._hash = sha.sha(self._hash).hexdigest()
+        self._hash = hashlib.sha256(self._hash.encode('utf-8')).hexdigest()
 
         # Reference hash in nodes slot
         source_slot.add_edge(self._hash)
@@ -222,13 +222,13 @@ class Edge(QtWidgets.QGraphicsItem):
             painter.drawPolygon(poly)
 
         # Draw debug
-        if DEBUG:
-            painter.setBrush(QtGui.QBrush())
-            painter.setPen(QtGui.QColor(255, 0, 0))
-            painter.drawPath(self.shape())
-
-            painter.setPen(QtGui.QColor(0, 255, 0))
-            painter.drawRect(self.boundingRect())
+        # if DEBUG:
+        #     painter.setBrush(QtGui.QBrush())
+        #     painter.setPen(QtGui.QColor(255, 0, 0))
+        #     painter.drawPath(self.shape())
+        #
+        #     painter.setPen(QtGui.QColor(0, 255, 0))
+        #     painter.drawRect(self.boundingRect())
 
         return
 
@@ -305,8 +305,8 @@ class InteractiveEdge(Edge):
         :rtype: :class:`nodegraph.edge.InteractiveEdge`
 
         """
-        QtWidgets.QGraphicsItem.__init__(self, parent=None, scene=scene)
-
+        QtWidgets.QGraphicsItem.__init__(self, parent=None)
+        scene.addItem(self)
         self._source_slot = source_slot
         self._mouse_pos = mouse_pos
         self._outline = outline
