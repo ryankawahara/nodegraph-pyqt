@@ -31,7 +31,7 @@ class View(QtWidgets.QGraphicsView):
 
     """
 
-    def __init__(self, scene, parent=None):
+    def __init__(self, scene, parent=None, is_zoom=False):
         """Create an instance of this class
 
         :param scene: Scene reference
@@ -48,10 +48,10 @@ class View(QtWidgets.QGraphicsView):
         self._last_mouse_pos = QtCore.QPoint(0, 0)
         self._width = SCENE_WIDTH
         self._height = SCENE_HEIGHT
-        self._scale = 1.0
+        self._scale = 1
         self._is_view_initialised = False
         self._is_pan = False
-        self._is_zoom = False
+        self._is_zoom = is_zoom
 
         # Custom mouse cursors
         img = QtGui.QPixmap(
@@ -165,6 +165,7 @@ class View(QtWidgets.QGraphicsView):
         :type limits: bool
 
         """
+
         new_scale = self._scale * scale_factor
         if limits and (new_scale >= 1.0 or new_scale < 0.1):
             # Respecting scaling limits
@@ -378,13 +379,14 @@ class View(QtWidgets.QGraphicsView):
         :type event: :class:`QtWidgets.QWheelEvent`
 
         """
-        # print("WHEELLLLL")
-        delta = event.delta()
-        # p = event.pos()
+        if self._is_zoom:
+            # print("WHEELLLLL")
+            delta = event.delta()
+            # p = event.pos()
 
-        scale_factor = pow(1.25, delta / 240.0)
-        self.scale_view(scale_factor)
-        event.accept()
+            scale_factor = pow(1.25, delta / 240.0)
+            self.scale_view(scale_factor)
+            event.accept()
 
     def showEvent(self, event):
         """Re-implent showEvent from base class

@@ -28,12 +28,13 @@ class Scene(QtWidgets.QGraphicsScene):
 
     """
 
-    def __init__(self, parent=None, nodegraph_widget=None):
+    def __init__(self, parent=None, nodegraph_widget=None, multiple_input_allowed=False, convert=None):
         """Create an instance of this class
 
         """
         QtWidgets.QGraphicsScene.__init__(self, parent)
         self.parent = parent
+        self.convert = convert
         self._nodegraph_widget = nodegraph_widget
         self._nodes = []
         self._edges_by_hash = {}
@@ -42,6 +43,7 @@ class Scene(QtWidgets.QGraphicsScene):
         self._interactive_edge = None
         self._refresh_edges = {"move": [], "refresh": []}
         self._rubber_band = None
+        self.multiple_input_allowed = multiple_input_allowed
 
         # Registars
         self._is_rubber_band = False
@@ -87,13 +89,17 @@ class Scene(QtWidgets.QGraphicsScene):
         """
         return self._edges_by_hash
 
-    def create_node(self, name, inputs=["in"], outputs=["out"], parent=None, width=160, height=130):
+    def create_node(self, name, inputs=["in"], outputs=["out"], parent=None, width=160, height=130, selectable=True, movable=True):
         """Create a new node
 
         """
-        node = Node(name, self, inputs=inputs, outputs=outputs, parent=parent, width=width, height=height)
+        node = Node(name, self, inputs=inputs, outputs=outputs, parent=parent, width=width, height=height, selectable=selectable, movable=movable)
         self._nodes.append(node)
         return node
+
+    def update_node_name(self, node, name):
+        node.update_name(name)
+
 
     def create_edge(self, source, target):
         """Create a new edge
@@ -183,7 +189,6 @@ class Scene(QtWidgets.QGraphicsScene):
                     for aninput in source.parent._inputs:
                         pass
                 else:
-                    print("OUTPUTS 186", source.parent._outputs)
                     for anoutput in source.parent._outputs:
                         # output = anoutput
                         pass
@@ -191,7 +196,7 @@ class Scene(QtWidgets.QGraphicsScene):
                 # allows multiple output nodes to connect to an input node
                 edge = self.create_edge(target, source)
             else:
-                print("EXIT 195")
+                print("EXIT 195 HELLO WORLD")
                 print("source", source._edge)
                 source_hashes = list(source._edge)
                 print(source.parent.edges)
@@ -201,15 +206,53 @@ class Scene(QtWidgets.QGraphicsScene):
                 # IF this slot is ALREADY CONNECTED to the target then it should NOT connect. Edge would not get created.
                 print("target", target._edge)
                 # need to distinguish between having a line from one to another
-                edge = self.create_edge(target, source)
+                if self.multiple_input_allowed:
+                    edge = self.create_edge(target, source)
                 # TO DO: Send info to status bar
 
 
         # Delete item (to be sure it's not taken into account by any function
         # including but not limited to fitInView)
+        try:
+            print(self.get_connections(target))
+        except UnboundLocalError as e:
+            pass
+
         print("delete line!")
         self.removeItem(self._interactive_edge)
         self._interactive_edge = None
+
+    def get_connections(self, target_node):
+        connection_dict = {}
+        for node_hash in target_node.parent.edges:
+            try:
+                source_name = self._edges_by_hash[node_hash]._source_slot._name
+            except KeyError:
+                pass
+
+            try:
+                target_name = self._edges_by_hash[node_hash]._target_slot._name
+            except KeyError:
+                pass
+
+            if self.convert:
+                # converts Translate X to tx
+                source = self.convert(source_name)
+                target = self.convert(target_name)
+
+            else:
+                source = source_name
+                target = target_name
+
+            if source in connection_dict:
+                connection_dict[source].append(target)
+
+            else:
+                connection_dict[source] = [target]
+
+        return connection_dict
+
+
 
     def start_rubber_band(self, init_pos):
         """Create/Enable custom rubber band
@@ -383,8 +426,8 @@ class Scene(QtWidgets.QGraphicsScene):
                 if input._rect.contains(sceneMouse):
                     print(input._name, "YAY")
                     target_node = input
-                else:
-                    print("NO")
+                # else:
+                #     print("NO")
             #     print(input.name, input._rect)
             #     print(input.name, input._rect.contains(sceneMouse))
             # print("location", event.pos())
