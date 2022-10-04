@@ -45,6 +45,11 @@ class Scene(QtWidgets.QGraphicsScene):
         self._rubber_band = None
         self.multiple_input_allowed = multiple_input_allowed
 
+        self.connections_dict = {}
+
+        self.source_node = None
+        self.target_node = None
+
         # Registars
         self._is_rubber_band = False
         self._is_shift_key = False
@@ -99,6 +104,12 @@ class Scene(QtWidgets.QGraphicsScene):
 
     def update_node_name(self, node, name):
         node.update_name(name)
+
+    def store_target_node(self, node):
+        self.target_node = node
+
+    def store_source_node(self, node):
+        self.source_node = node
 
 
     def create_edge(self, source, target):
@@ -214,7 +225,7 @@ class Scene(QtWidgets.QGraphicsScene):
         # Delete item (to be sure it's not taken into account by any function
         # including but not limited to fitInView)
         try:
-            print(self.get_connections(target))
+            self.connections_dict = self.get_connections(target)
         except UnboundLocalError as e:
             pass
 
@@ -245,7 +256,8 @@ class Scene(QtWidgets.QGraphicsScene):
                 target = target_name
 
             if source in connection_dict:
-                connection_dict[source].append(target)
+                if target not in connection_dict[source]:
+                    connection_dict[source].append(target)
 
             else:
                 connection_dict[source] = [target]
@@ -254,7 +266,7 @@ class Scene(QtWidgets.QGraphicsScene):
 
 
 
-    def start_rubber_band(self, init_pos):
+    def start_rubber_band(self, init_pos, col=None):
         """Create/Enable custom rubber band
 
         :param init_pos: Top left corner of the custom rubber band
@@ -264,7 +276,7 @@ class Scene(QtWidgets.QGraphicsScene):
         self._is_rubber_band = True
         if not self._rubber_band:
             # Create custom rubber band
-            self._rubber_band = RubberBand(init_pos, scene=self)
+            self._rubber_band = RubberBand(init_pos, scene=self, color=col)
         else:
             # Re-use existing rubber band
             self._rubber_band.refresh(mouse_pos=init_pos, init_pos=init_pos)
@@ -318,6 +330,20 @@ class Scene(QtWidgets.QGraphicsScene):
             self.removeItem(edge)
             self.remove_edge(edge)
 
+            remove_source_name = self.convert(edge._source_slot._name)
+            remove_target_name = self.convert(edge._target_slot._name)
+            output_list = self.connections_dict[remove_source_name]
+
+            if len(output_list) < 2:
+                self.connections_dict.pop(remove_source_name)
+            else:
+                output_list.remove(remove_target_name)
+
+
+            # if self.connections_dict[self.convert(edge._source_slot)._name]
+            # self.connections_dict.pop(self.convert(edge._source_slot._name))
+            # print(edge._source_slot._name, edge._target_slot._name)
+
     def mousePressEvent(self, event):
         """Re-implements mouse press event
 
@@ -329,7 +355,12 @@ class Scene(QtWidgets.QGraphicsScene):
         if not self._is_interactive_edge:
 
             if not self.items(event.scenePos()):
-                self.start_rubber_band(event.scenePos())
+                buttons = event.buttons()
+
+                if buttons == QtCore.Qt.LeftButton:
+                    self.start_rubber_band(event.scenePos())
+                else:
+                    self.start_rubber_band(event.scenePos(), QtGui.QColor(255,0,0))
 
                 if self._is_shift_key or self._is_ctrl_key:
                     event.accept()
@@ -367,6 +398,15 @@ class Scene(QtWidgets.QGraphicsScene):
         buttons = event.buttons()
 
 
+        # THIS SECTION IS FOR CLICK AND CLICK.
+        # if self.source_node:
+        #     # print(self.source_node._name)
+        #     QtWidgets.QGraphicsScene.mouseMoveEvent(self, event)
+        #     sceneMouse = event.scenePos() + QtCore.QPointF(-150, 0)
+        #
+        #     if self._is_interactive_edge:
+        #         self._interactive_edge.refresh(event.scenePos())
+        # el
         if buttons == QtCore.Qt.LeftButton:
             # for item in self.items(event.scenePos()):
             #     print(item._name, type(item))
@@ -380,6 +420,7 @@ class Scene(QtWidgets.QGraphicsScene):
                 self._interactive_edge.refresh(event.scenePos())
             # Selection mode?
             elif self._is_rubber_band:
+                print("408")
                 self._rubber_band.refresh(event.scenePos())
             elif self.selectedItems():
                 if not self._is_refresh_edges:
@@ -392,6 +433,17 @@ class Scene(QtWidgets.QGraphicsScene):
                 for ahash in self._refresh_edges["refresh"]:
                     if ahash in self._edges_by_hash:
                         self._edges_by_hash[ahash].refresh()
+        elif buttons == QtCore.Qt.RightButton:
+            QtWidgets.QGraphicsScene.mouseMoveEvent(self, event)
+            sceneMouse = event.scenePos() + QtCore.QPointF(-150, 0)
+            # print("Scene MOUSE", sceneMouse)
+
+            # Edge creation mode?
+            if self._is_interactive_edge:
+                self._interactive_edge.refresh(event.scenePos())
+            # Selection mode?
+            elif self._is_rubber_band:
+                self._rubber_band.refresh(event.scenePos())
         else:
             return QtWidgets.QGraphicsScene.mouseMoveEvent(self, event)
 
@@ -402,12 +454,16 @@ class Scene(QtWidgets.QGraphicsScene):
         :type event: :class:`QtWidgets.QMouseEvent`
 
         """
+        # if self.target_node:
+        #     print("hello there")
+        #     return
         # buttons = event.buttons()
 
         connect_to = None
 
         # Edge creation mode?
         if self._is_interactive_edge:
+
             slot = None
             node = None
             for item in self.items(event.scenePos()):
@@ -419,13 +475,16 @@ class Scene(QtWidgets.QGraphicsScene):
             if not connect_to:
                 self.stop_interactive_edge()
                 return
-            print("connect to", connect_to._inputs)
+
             target_node = None
-            for input in connect_to._inputs:
-                sceneMouse = event.scenePos() - connect_to.mapToScene(event.pos())
-                if input._rect.contains(sceneMouse):
-                    print(input._name, "YAY")
-                    target_node = input
+            if hasattr(connect_to,'_inputs'):
+                for input in connect_to._inputs:
+                    sceneMouse = event.scenePos() - connect_to.mapToScene(event.pos())
+                    if input._rect.contains(sceneMouse):
+                        print(input._name, "YAY")
+                        target_node = input
+            else:
+                print("no inputs")
                 # else:
                 #     print("NO")
             #     print(input.name, input._rect)
@@ -434,6 +493,9 @@ class Scene(QtWidgets.QGraphicsScene):
             # print("mouse", connect_to.mapToScene(event.pos()))
             # selected = [i for i in connect_to._inputs if i._rect.contains(connect_to.mapToScene(event.scenePos()))]
             # print(selected)
+
+            # LEAVE OFF HERE!!!!! THIS IS KEY RIGHT HERE. If it clicks and source is set then it should STOP
+            # if self.target_node is not None:
             self.stop_interactive_edge(connect_to=target_node)
 
         # Edge refresh mode?

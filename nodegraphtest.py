@@ -1,16 +1,17 @@
 #!/usr/bin/env python
-
+import maya.cmds as cmds
 from unload_packages import *
-unload_packages(silent=False, packages=["nodegraph"])
-
+unload_packages(silent=False, packages=["nodegraph", "rk_copyAnimation"])
+from rk_copyAnimation import CopyAnimation
 # import os
 import sys
 
 # import networkx
-from Qt import QtWidgets, QtGui
+from Qt import QtWidgets, QtGui, QtCore
 
 from nodegraph.scene import Scene
 from nodegraph.view import View
+
 
 
 class NodeGraphDialog(QtWidgets.QMainWindow):
@@ -20,6 +21,8 @@ class NodeGraphDialog(QtWidgets.QMainWindow):
     """
 
     def __init__(self, parent=None):
+
+
         QtWidgets.QMainWindow.__init__(self, parent)
         self.parent = parent or self
 
@@ -90,22 +93,26 @@ class Input_window(QtWidgets.QWidget):
         self.resize(500, 450)
         self.gridLayout = QtWidgets.QGridLayout(self)
         self.gridLayout.setObjectName("gridLayout")
-        self.pushButton = QtWidgets.QPushButton(self)
-        self.pushButton.setObjectName("pushButton")
-        self.gridLayout.addWidget(self.pushButton, 0, 0, 1, 1)
-        self.pushButton_2 = QtWidgets.QPushButton(self)
-        self.pushButton_2.setObjectName("pushButton_2")
-        self.gridLayout.addWidget(self.pushButton_2, 0, 1, 1, 1)
+        self.set_source = QtWidgets.QPushButton(self)
+        self.set_source.setObjectName("set_source")
+        self.gridLayout.addWidget(self.set_source, 0, 0, 1, 1)
+        self.set_target = QtWidgets.QPushButton(self)
+        self.set_target.setObjectName("set_target")
+        self.gridLayout.addWidget(self.set_target, 0, 1, 1, 1)
 
+        self.animation_copier = CopyAnimation()
+
+        self.target_objects = []
 
         self.widget = QtWidgets.QWidget(self)
         self.widget.setObjectName("widget")
         self.gridLayout.addWidget(self.widget, 2, 0, 1, 2)
 
         self.nodegraph = NodeGraphWidget("main", parent=self)
+        self.nodegraph.mousePressEvent = lambda event: cmds.select(clear=True)
         self.gridLayout.addWidget(self.nodegraph, 2, 0, 1, 2)
 
-        source = self.nodegraph.graph_scene.create_node(
+        self.source = self.nodegraph.graph_scene.create_node(
             "Source",
             inputs=[],
             outputs=[
@@ -126,8 +133,8 @@ class Input_window(QtWidgets.QWidget):
             selectable=False,
             movable=False,
         )
-        source.setPos(-200, 0)
-        target = self.nodegraph.graph_scene.create_node(
+        self.source.setPos(-200, 0)
+        self.target = self.nodegraph.graph_scene.create_node(
             "Target",
             inputs=[
                 "All",
@@ -148,29 +155,33 @@ class Input_window(QtWidgets.QWidget):
             selectable=False,
             movable=False,
         )
-        target.setPos(150, 0)
+        self.target.setPos(150, 0)
         # edge = self.nodegraph.graph_scene.create_edge(
         # cam._outputs[0],
         # model._inputs[0])
-        print(type(target))
-        # target._update_title("Ryan")
+        print(type(self.target))
+        # self.target._update_title("Ryan")
         # object_methods = [method_name for method_name in dir(target)
         #                   if callable(getattr(target, method_name))]
         # print(object_methods)
 
 
 
-        self.pushButton_3 = QtWidgets.QPushButton(self)
-        self.pushButton_3.setObjectName("pushButton_3")
-        self.gridLayout.addWidget(self.pushButton_3, 3, 0, 1, 2)
+        self.go_button = QtWidgets.QPushButton(self)
+        self.go_button.setObjectName("go_button")
+        self.gridLayout.addWidget(self.go_button, 3, 0, 1, 2)
         self.checkBox = QtWidgets.QCheckBox(self)
         self.checkBox.setObjectName("checkBox")
         self.gridLayout.addWidget(self.checkBox, 1, 0, 1, 1, QtCore.Qt.AlignRight)
 
+        self.set_source.clicked.connect(self.set_source_object)
+        self.go_button.clicked.connect(self.execute)
+        self.set_target.clicked.connect(self.set_target_objects)
+
         self.setWindowTitle("Dialog")
-        self.pushButton.setText("Set Source")
-        self.pushButton_2.setText("Set Target")
-        self.pushButton_3.setText("Zhu Li! Do the thing!")
+        self.set_source.setText("Set Source")
+        self.set_target.setText("Set Target")
+        self.go_button.setText("Zhu Li! Do the thing!")
         self.checkBox.setText("Invert")
 
         self.pushButton_4 = QtWidgets.QPushButton(self)
@@ -186,6 +197,55 @@ class Input_window(QtWidgets.QWidget):
         self.gridLayout.addWidget(self.pushButton_4, 1, 1, 1, 1)
 
         QtCore.QMetaObject.connectSlotsByName(self)
+
+    def execute(self):
+        self.animation_copier.clear_target_channels()
+        try:
+            channel_dict = self.nodegraph.graph_scene.connections_dict
+            print(self.nodegraph.graph_scene.connections_dict)
+            #self.animation_copier.store_target(target_objects)
+            for obj in self.target_objects:
+                self.animation_copier.store_target(obj)
+
+                for src, targets in channel_dict.items():
+                    self.animation_copier.set_source_channel(src)
+                    for trgt in targets:
+                        print(src, trgt)
+                        self.animation_copier.set_target_channel(trgt)
+                        print(self.animation_copier.source, self.animation_copier.target, self.animation_copier.selectedTargets, self.animation_copier.sourceChannel)
+
+                        self.animation_copier.copyAnimation()
+
+        except UnboundLocalError as e:
+            pass
+
+    def set_source_object(self):
+        sel = cmds.ls(sl=True)
+        target_item = sel[0]
+        self.animation_copier.clear_source()
+        self.animation_copier.store_source(target_item)
+        self.source._update_title(target_item)
+
+    def set_target_objects(self):
+        self.animation_copier.clear_target()
+        print("hi")
+        sel = cmds.ls(sl=True)
+        self.target_objects = sel
+
+        self.target._update_title(f"{len(self.target_objects)} Objects")
+
+
+
+
+
+
+        # test.store_source("pCube1")
+        # test.store_target("pCube2")
+        # test.set_source_channel("ty")
+        # test.set_target_channel("tz")
+        # test.copyAnimation()
+        # self.source._update_title("Ryan")
+
 
 
 
@@ -205,11 +265,16 @@ class NodeGraphWidget(QtWidgets.QWidget):
                                  nodegraph_widget=self,
                                  multiple_input_allowed=False,
                                  convert = convert_func)
-        self.graph_view = View(self.graph_scene, parent=self.parent, is_zoom=True)
+        self.graph_view = View(self.graph_scene, parent=self.parent, is_zoom=False, scale=0.85)
+        self.graph_view.mousePressedEvent = lambda event: cmds.select(clear=True)
         # find out why it's not scaling!!!!
-        self.graph_view.scale_view(0.85)
         self.horizontal_layout = QtWidgets.QHBoxLayout(self)
         self.horizontal_layout.addWidget(self.graph_view)
+
+        self.setMouseTracking(True)
+
+    def mousePressEvent(self, event):
+        cmds.select(clear=True)
 
 
 if __name__ == "__main__":
@@ -217,3 +282,5 @@ if __name__ == "__main__":
     # dialog.show()
     box = Input_window()
     box.show()
+
+# add break node shortcut

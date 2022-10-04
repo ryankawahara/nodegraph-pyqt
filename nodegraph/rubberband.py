@@ -34,7 +34,7 @@ class RubberBand(QtWidgets.QGraphicsItem):
     MINUS_SELECTION = 4
     TOGGLE_SELECTION = 8
 
-    def __init__(self, init_pos, scene, outline=2):
+    def __init__(self, init_pos, scene, outline=2, color=None):
         """Creates an instance of this class
 
         :param init_pos: Point of origin of the rubber band
@@ -57,6 +57,7 @@ class RubberBand(QtWidgets.QGraphicsItem):
         self._outline = outline
         self._shape = None
         self._selection_mode = self.REPLACE_SELECTION
+        self.specific_color=color
 
         # Settings
         self.setZValue(10)
@@ -107,10 +108,15 @@ class RubberBand(QtWidgets.QGraphicsItem):
 
         """
         # Define pen
+
         palette = (self.scene().palette() if self.scene()
                    else option.palette)
         pen = QtGui.QPen()
-        pen.setBrush(palette.highlight())
+        if not self.specific_color:
+            pen.setBrush(palette.highlight())
+
+        else:
+            pen.setBrush(self.specific_color)
         pen.setCosmetic(True)
         pen.setWidth(self._outline)
         pen.setStyle(QtCore.Qt.DashLine)
@@ -118,8 +124,10 @@ class RubberBand(QtWidgets.QGraphicsItem):
         # Draw Shape
         painter.setPen(pen)
         # painter.drawPath(self._shape)
-
-        color = palette.highlight().color()
+        if not self.specific_color:
+            color = palette.highlight().color()
+        else:
+            color = self.specific_color
         color.setAlphaF(0.2)
         painter.setBrush(QtGui.QColor(color))
         painter.drawRect(self.shape().controlPointRect())

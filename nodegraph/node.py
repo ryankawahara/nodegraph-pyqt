@@ -141,6 +141,7 @@ class Node(QtWidgets.QGraphicsItem):
 
     def _update_title(self, name):
         self.update_title = name
+        self.refresh()
 
     def boundingRect(self):
         """Return a QRect that represents the bounding box of the node.
@@ -153,7 +154,6 @@ class Node(QtWidgets.QGraphicsItem):
         """Re-implement paint method
 
         """
-        print("Redraw %s" % self._name)
         lod = option.levelOfDetailFromTransform(painter.worldTransform())
 
         # Resolve fill, text and outlines brush
@@ -352,6 +352,8 @@ class Node(QtWidgets.QGraphicsItem):
                 if anoutput._rect.contains(event.pos()):
                     mouse_pos = self.mapToScene(event.pos())
                     self.scene().start_interactive_edge(anoutput, mouse_pos)
+                    self.scene().store_source_node(anoutput)
+                    # print(self.scene().source_node._name)
                     event.accept()
                     return
             for aninput in self._inputs:
@@ -392,9 +394,18 @@ class Node(QtWidgets.QGraphicsItem):
         # modifiers = event.modifiers()
 
         # print("%s : mouse move event. Hover slot: %s" %(self._name, self._hover_slot))
+        # print(self.scene().source_node is not None)
 
-        if buttons == QtCore.Qt.LeftButton:
+        if self.scene().source_node:
             if self.scene().is_interactive_edge:
+                # Edge creation mode
+                # print("Node Name: %s, pos: %s" % (self._name, event.pos()))
+                event.accept()
+                return
+
+        elif buttons == QtCore.Qt.LeftButton:
+            if self.scene().is_interactive_edge:
+
                 # Edge creation mode
 
                 # print("Node Name: %s, pos: %s" % (self._name, event.pos()))
@@ -414,7 +425,10 @@ class Node(QtWidgets.QGraphicsItem):
         self._update()
         if refresh_edges and self.edges:
             for ahash in self.edges:
-                self.scene().edges_by_hash[ahash].refresh()
+                try:
+                    self.scene().edges_by_hash[ahash].refresh()
+                except KeyError:
+                    pass
         self.update()
 
 

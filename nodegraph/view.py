@@ -31,7 +31,7 @@ class View(QtWidgets.QGraphicsView):
 
     """
 
-    def __init__(self, scene, parent=None, is_zoom=False):
+    def __init__(self, scene, parent=None, is_zoom=False, scale=1, movable=True):
         """Create an instance of this class
 
         :param scene: Scene reference
@@ -48,10 +48,11 @@ class View(QtWidgets.QGraphicsView):
         self._last_mouse_pos = QtCore.QPoint(0, 0)
         self._width = SCENE_WIDTH
         self._height = SCENE_HEIGHT
-        self._scale = 1
+        self._scale = scale
         self._is_view_initialised = False
         self._is_pan = False
         self._is_zoom = is_zoom
+        self._movable = movable
 
         # Custom mouse cursors
         img = QtGui.QPixmap(
@@ -96,7 +97,7 @@ class View(QtWidgets.QGraphicsView):
         # Init scene
         self.setInteractive(True)
 
-    def fit_view(self, selected=False, padding=50):
+    def fit_view(self, scale=1, selected=False, padding=50):
         """Set view transform in order to fit all/selected nodes in scene.
 
         :param selected: If enabled, fit only selected nodes
@@ -138,11 +139,15 @@ class View(QtWidgets.QGraphicsView):
                 self.resetTransform()
                 self.scale_view(0.1)
             self.centerOn(scene_rect.center())
-        else:
+        elif self._scale is 1:
             # Fit to rectangle while keeping aspect ratio
             self._scale = new_scale
             print("Fit en view")
+
             self.fitInView(scene_rect, QtCore.Qt.KeepAspectRatio)
+        else:
+            self.scale_view(self._scale)
+            self.centerOn(scene_rect.center())
 
     def translate_view(self, offset):
         """Translate view by the given offset
@@ -194,11 +199,12 @@ class View(QtWidgets.QGraphicsView):
         modifiers = event.modifiers()
 
         if modifiers & QtCore.Qt.AltModifier:
-            print("P# ALT ON")
-            self.scene()._is_alt_key = True
-            self._is_pan = True
-            self.setRenderHint(QtGui.QPainter.Antialiasing, False)
-            self.setCursor(QtCore.Qt.OpenHandCursor)
+            if self._movable:
+                print("P# ALT ON")
+                self.scene()._is_alt_key = True
+                self._is_pan = True
+                self.setRenderHint(QtGui.QPainter.Antialiasing, False)
+                self.setCursor(QtCore.Qt.OpenHandCursor)
 
         if modifiers & QtCore.Qt.ControlModifier:
             print("P# CTRL ON")
@@ -335,6 +341,7 @@ class View(QtWidgets.QGraphicsView):
             self._last_mouse_pos = event.pos()
             QtWidgets.QGraphicsView.mouseMoveEvent(self, event)
 
+
     def mouseReleaseEvent(self, event):
         """Re-implement mouseReleaseEvent from base class
 
@@ -397,7 +404,7 @@ class View(QtWidgets.QGraphicsView):
         """
         if not self._is_view_initialised:
             self._is_view_initialised = True
-            self.fit_view()
+            self.fit_view(self._scale)
         QtWidgets.QGraphicsView.showEvent(self, event)
 
     def focusOutEvent(self, event):
