@@ -304,6 +304,25 @@ class Scene(QtWidgets.QGraphicsScene):
         self.removeItem(self._rubber_band)
         self._rubber_band = None
 
+
+    def delete_edges(self, edges_to_delete):
+        for edge in edges_to_delete:
+            self.removeItem(edge)
+            self.remove_edge(edge)
+
+            remove_source_name = self.convert(edge._source_slot._name)
+            remove_target_name = self.convert(edge._target_slot._name)
+            if remove_source_name in self.connections_dict:
+                output_list = self.connections_dict[remove_source_name]
+                if len(output_list) < 2:
+                    self.connections_dict.pop(remove_source_name)
+                else:
+                    output_list.remove(remove_target_name)
+            else:
+                continue
+
+
+
     def delete_selected(self):
         """Delete selected nodes and edges
 
@@ -420,7 +439,7 @@ class Scene(QtWidgets.QGraphicsScene):
                 self._interactive_edge.refresh(event.scenePos())
             # Selection mode?
             elif self._is_rubber_band:
-                print("408")
+                # print("408")
                 self._rubber_band.refresh(event.scenePos())
             elif self.selectedItems():
                 if not self._is_refresh_edges:
@@ -519,7 +538,10 @@ class Scene(QtWidgets.QGraphicsScene):
         selected = self.items(event.scenePos())
 
         if len(selected) == 1:
-            print("Edit Node %s" % selected[0]._name)
+            print(type(selected[0]))
+
+            selected[0].set_double_click(not selected[0].double_click)
+            # print("Edit Node %s" % selected[0]._name)
 
     def _onSelectionChanged(self):
         """Re-inplements selection changed event

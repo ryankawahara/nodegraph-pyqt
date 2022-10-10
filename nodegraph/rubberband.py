@@ -17,7 +17,7 @@ default one with a large numbers of items
 
 from Qt import QtCore, QtGui, QtWidgets
 # from .node import Node
-# from .edge import Edge
+from .edge import Edge
 
 # from constant import DEBUG
 
@@ -165,27 +165,90 @@ class RubberBand(QtWidgets.QGraphicsItem):
         """
         operation = operation or self.REPLACE_SELECTION
         intersect = intersect or QtCore.Qt.ContainsItemBoundingRect
+        current_selection = self.scene().selectedItems()
+        print(current_selection, operation == self.ADD_SELECTION)
+
+
+
 
         if operation == self.ADD_SELECTION:
-            current_selection = self.scene().selectedItems()
-            self.scene().setSelectionArea(self.shape(), intersect)
+            # current_selection = self.scene().selectedItems()
+            # print(current_selection)
+            # self.scene().setSelectionArea(self.shape(), intersect)
+            # current_selection = self.scene().items()
+            # print(current_selection)
+            rect = self._shape
+            rect_scene = self.mapToScene(rect).boundingRect()
+            selected = self.scene().items(rect_scene)
 
-            for item in current_selection:
+            for item in selected:
+                print(type(item))
                 item.setSelected(True)
 
         elif operation == self.MINUS_SELECTION:
-            items = self.scene().items(self.shape(), intersect)
+            # items = self.scene().items(self.shape(), intersect)
+            rect = self._shape
+            rect_scene = self.mapToScene(rect).boundingRect()
+            selected = self.scene().items(rect_scene)
+
+
+            for item in selected:
+                item.setSelected(False)
+                if self.specific_color:
+                    try:
+                        item.set_double_click(False)
+                        item.refresh()
+                    except AttributeError:
+                        pass
+
+        elif operation == self.TOGGLE_SELECTION:
+
+            items = self.scene().items()
 
             for item in items:
                 item.setSelected(False)
+            # print(self.rubberBand.geometry())
+            # rect = self.mapToScene(self.)
+            rect = self._shape
+            rect_scene = self.mapToScene(rect).boundingRect()
+            selected = self.scene().items(rect_scene)
+            edges_to_delete = []
+            for item in selected:
+                if type(item) is Edge:
+                    edges_to_delete.append(item)
+            print(edges_to_delete)
+            self.scene().delete_edges(edges_to_delete)
 
-        elif operation == self.TOGGLE_SELECTION:
-            items = self.scene().items(self.shape(), intersect)
+
+
+
+
+            # print("disconnect")
+            # items = self.scene().items(self.shape(), intersect)
+            #
+            # for item in items:
+            #     if item.isSelected():
+            #         item.setSelected(False)
+            #     else:
+            #         item.setSelected(True)
+        else:
+            items = self.scene().items()
 
             for item in items:
-                if item.isSelected():
-                    item.setSelected(False)
-                else:
-                    item.setSelected(True)
-        else:
-            self.scene().setSelectionArea(self.shape(), intersect)
+                item.setSelected(False)
+            # print(self.rubberBand.geometry())
+            # rect = self.mapToScene(self.)
+            rect = self._shape
+            rect_scene = self.mapToScene(rect).boundingRect()
+            selected = self.scene().items(rect_scene)
+            for item in selected:
+                item.setSelected(True)
+
+                if self.specific_color:
+                    try:
+                        item.set_double_click(True)
+                    except AttributeError:
+                        pass
+
+            # self.scene().setSelectionArea(self.shape(), intersect)
+            # print(self.scene().items())

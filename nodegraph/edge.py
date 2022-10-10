@@ -70,6 +70,7 @@ class Edge(QtWidgets.QGraphicsItem):
         self._shape = None
         self._line = None
 
+        self.double_click = False
         # Set tooltip
         self.setToolTip(self._hash)
 
@@ -174,10 +175,19 @@ class Edge(QtWidgets.QGraphicsItem):
         # Infer bounding box from shape
         return self._shape.controlPointRect()
 
+    def set_double_click(self, toggle):
+        self.double_click = toggle
+        self.setSelected(False)
+
+
+
+
+
     def paint(self, painter, option, widget=None):
         """Re-implement paint method
 
         """
+        invert_color = self.double_click
         # Update level of detail
         self._lod = option.levelOfDetailFromTransform(painter.worldTransform())
 
@@ -186,7 +196,15 @@ class Edge(QtWidgets.QGraphicsItem):
                    else option.palette)
         brush = palette.text()
         if option.state & QtWidgets.QStyle.State_Selected:
-            brush = palette.highlight()
+            if invert_color:
+                color = QtGui.QColor(255, 0, 0)
+                color = color.darker(250)
+                brush.setColor(color)
+            else:
+                brush = palette.highlight()
+        elif invert_color:
+            color = QtGui.QColor(255, 0, 0)
+            brush.setColor(color)
         elif option.state & QtWidgets.QStyle.State_MouseOver:
             color = brush.color().darker(250)
             brush.setColor(color)
@@ -307,6 +325,7 @@ class InteractiveEdge(Edge):
         """
         QtWidgets.QGraphicsItem.__init__(self, parent=None)
         scene.addItem(self)
+        self.double_click = False
         self._source_slot = source_slot
         self._mouse_pos = mouse_pos
         self._outline = outline

@@ -170,9 +170,9 @@ class Input_window(QtWidgets.QWidget):
         self.go_button = QtWidgets.QPushButton(self)
         self.go_button.setObjectName("go_button")
         self.gridLayout.addWidget(self.go_button, 3, 0, 1, 2)
-        self.checkBox = QtWidgets.QCheckBox(self)
-        self.checkBox.setObjectName("checkBox")
-        self.gridLayout.addWidget(self.checkBox, 1, 0, 1, 1, QtCore.Qt.AlignRight)
+        self.invert_checkbox = QtWidgets.QCheckBox(self)
+        self.invert_checkbox.setObjectName("invert_checkbox")
+        self.gridLayout.addWidget(self.invert_checkbox, 1, 0, 1, 1, QtCore.Qt.AlignRight)
 
         self.set_source.clicked.connect(self.set_source_object)
         self.go_button.clicked.connect(self.execute)
@@ -182,7 +182,7 @@ class Input_window(QtWidgets.QWidget):
         self.set_source.setText("Set Source")
         self.set_target.setText("Set Target")
         self.go_button.setText("Zhu Li! Do the thing!")
-        self.checkBox.setText("Invert")
+        self.invert_checkbox.setText("Invert")
 
         self.pushButton_4 = QtWidgets.QPushButton(self)
         font = QtGui.QFont()
@@ -199,7 +199,9 @@ class Input_window(QtWidgets.QWidget):
         QtCore.QMetaObject.connectSlotsByName(self)
 
     def execute(self):
-        self.animation_copier.clear_target_channels()
+        invert = self.invert_checkbox.isChecked()
+        print(invert)
+        # self.animation_copier.clear_target_channels()
         try:
             channel_dict = self.nodegraph.graph_scene.connections_dict
             print(self.nodegraph.graph_scene.connections_dict)
@@ -208,6 +210,7 @@ class Input_window(QtWidgets.QWidget):
                 self.animation_copier.store_target(obj)
 
                 for src, targets in channel_dict.items():
+                    self.animation_copier.clear_target_channels()
                     self.animation_copier.set_source_channel(src)
                     for trgt in targets:
                         print(src, trgt)
