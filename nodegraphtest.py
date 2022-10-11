@@ -12,6 +12,74 @@ from Qt import QtWidgets, QtGui, QtCore
 from nodegraph.scene import Scene
 from nodegraph.view import View
 
+class ConnectionCollection:
+    def __init__(self):
+        self.connection_dict = {}
+        print("hello there")
+
+    def add(self, source_channel, target_channel, invert):
+        if source_channel in self.connection_dict:
+            # if target_channel not in self.connection_dict[source_channel]:
+            if not self.contains(target_channel, source_channel):
+                self.connection_dict[source_channel].append(ConnectionItem(target_channel, invert))
+        else:
+            self.connection_dict[source_channel] = [ConnectionItem(target_channel, invert)]
+
+    def remove(self, remove_source_name, remove_target_name):
+        if remove_source_name in self.connection_dict:
+            output_list = self.connection_dict[remove_source_name]
+            for item in output_list:
+                print(str(item))
+            if len(output_list) < 2:
+                self.connection_dict.pop(remove_source_name)
+            else:
+                print(remove_target_name)
+                index = self.search_item_by_name(remove_target_name, output_list)
+                print(index)
+
+                del output_list[index]
+                # output_list.remove(index)
+            return True
+        else:
+            return False
+
+    def contains(self, search, source_channel):
+        for val in self.connection_dict[source_channel]:
+            print(search, val, search in val)
+            if search in val:
+                return True
+            print('not found')
+        return False
+
+    def search_item_by_name(self, target_channel, output_list):
+        print("searching for", target_channel)
+        for item in output_list:
+            print("checking", str(item))
+        for item in output_list:
+            if item.target_channel == target_channel:
+                return output_list.index(item)
+        return -1
+
+    def toggle_invert(self, source_channel, target_channel):
+        item_list = self.connection_dict[source_channel]
+        index = self.search_item_by_name(target_channel, item_list)
+        item_list[index].invert = not item_list[index].invert
+
+class ConnectionItem:
+    def __init__(self, target_channel, invert):
+        self.target_channel = target_channel
+        self.invert = invert
+
+    def __str__(self):
+        return f"{self.target_channel} {self.invert}"
+
+    def __contains__(self, val):
+        print("CONTAINS", val == self.target_channel, type(val), type(self.target_channel))
+        if val == self.target_channel:
+            print("contains")
+            return True
+        return False
+
 
 
 class NodeGraphDialog(QtWidgets.QMainWindow):
@@ -87,8 +155,10 @@ class NodeGraphDialog(QtWidgets.QMainWindow):
 
 
 class Input_window(QtWidgets.QWidget):
-    def __init__(self):
+    def __init__(self, output_template=None):
         super(Input_window, self).__init__(parent=None)
+
+        self.output_template = output_template
         self.setObjectName("Dialog")
         self.resize(500, 450)
         self.gridLayout = QtWidgets.QGridLayout(self)
@@ -108,7 +178,7 @@ class Input_window(QtWidgets.QWidget):
         self.widget.setObjectName("widget")
         self.gridLayout.addWidget(self.widget, 2, 0, 1, 2)
 
-        self.nodegraph = NodeGraphWidget("main", parent=self)
+        self.nodegraph = NodeGraphWidget("main", parent=self, output_template=self.output_template)
         self.nodegraph.mousePressEvent = lambda event: cmds.select(clear=True)
         self.gridLayout.addWidget(self.nodegraph, 2, 0, 1, 2)
 
@@ -182,45 +252,58 @@ class Input_window(QtWidgets.QWidget):
         self.set_source.setText("Set Source")
         self.set_target.setText("Set Target")
         self.go_button.setText("Zhu Li! Do the thing!")
-        self.invert_checkbox.setText("Invert")
+        self.invert_checkbox.setText("Invert All")
 
-        self.pushButton_4 = QtWidgets.QPushButton(self)
+        self.clear_button = QtWidgets.QPushButton(self)
         font = QtGui.QFont()
         font.setBold(False)
         font.setItalic(False)
         font.setWeight(50)
-        self.pushButton_4.setFont(font)
-        self.pushButton_4.setStyleSheet("background-color: rgb(255, 0, 127)")
-        self.pushButton_4.setCheckable(False)
-        self.pushButton_4.setObjectName("pushButton_4")
-        self.pushButton_4.setText("Clear")
-        self.gridLayout.addWidget(self.pushButton_4, 1, 1, 1, 1)
+        self.clear_button.setFont(font)
+        self.clear_button.setStyleSheet("background-color: rgb(255, 0, 127)")
+        self.clear_button.setCheckable(False)
+        self.clear_button.setObjectName("clear_button")
+        self.clear_button.setText("Clear")
+
+        self.clear_button.clicked.connect(self.delete_all_lines)
+        self.gridLayout.addWidget(self.clear_button, 1, 1, 1, 1)
 
         QtCore.QMetaObject.connectSlotsByName(self)
+
+    def delete_all_lines(self):
+        self.nodegraph.graph_scene.delete_all_edges(self.target._inputs[0])
 
     def execute(self):
         invert = self.invert_checkbox.isChecked()
         print(invert)
         # self.animation_copier.clear_target_channels()
-        try:
-            channel_dict = self.nodegraph.graph_scene.connections_dict
-            print(self.nodegraph.graph_scene.connections_dict)
-            #self.animation_copier.store_target(target_objects)
-            for obj in self.target_objects:
-                self.animation_copier.store_target(obj)
+        # try:
+        print(type(self.target))
+        channel_dict = self.nodegraph.graph_scene.connections_dict
+        print(self.nodegraph.graph_scene.connections_dict)
+        res = ""
+        for key, val in self.nodegraph.graph_scene.connections_dict.items():
+            res += f"|{key}|"
+            for v in val:
+                res += f"[{v}]"
+            res += ", "
+        print(res)
+        #self.animation_copier.store_target(target_objects)
+        for obj in self.target_objects:
+            self.animation_copier.store_target(obj)
 
-                for src, targets in channel_dict.items():
-                    self.animation_copier.clear_target_channels()
-                    self.animation_copier.set_source_channel(src)
-                    for trgt in targets:
-                        print(src, trgt)
-                        self.animation_copier.set_target_channel(trgt)
-                        print(self.animation_copier.source, self.animation_copier.target, self.animation_copier.selectedTargets, self.animation_copier.sourceChannel)
+            for src, targets in channel_dict.items():
+                self.animation_copier.clear_target_channels()
+                self.animation_copier.set_source_channel(src)
+                for trgt in targets:
+                    print(src, trgt)
+                    self.animation_copier.set_target_channel(trgt)
+                    print(self.animation_copier.source, self.animation_copier.target, self.animation_copier.selectedTargets, self.animation_copier.sourceChannel)
 
-                        self.animation_copier.copyAnimation()
-
-        except UnboundLocalError as e:
-            pass
+                    self.animation_copier.copyAnimation()
+        #
+        # except UnboundLocalError as e:
+        #     pass
 
     def set_source_object(self):
         sel = cmds.ls(sl=True)
@@ -258,7 +341,7 @@ class NodeGraphWidget(QtWidgets.QWidget):
     Handles node graph view
     """
 
-    def __init__(self, name, parent=None):
+    def __init__(self, name, parent=None, output_template=None):
         QtWidgets.QWidget.__init__(self, parent)
         self.name = name
         self.parent = parent
@@ -267,7 +350,8 @@ class NodeGraphWidget(QtWidgets.QWidget):
         self.graph_scene = Scene(parent=self.parent,
                                  nodegraph_widget=self,
                                  multiple_input_allowed=False,
-                                 convert = convert_func)
+                                 convert = convert_func,
+                                 output_template = output_template)
         self.graph_view = View(self.graph_scene, parent=self.parent, is_zoom=False, scale=0.85)
         self.graph_view.mousePressedEvent = lambda event: cmds.select(clear=True)
         # find out why it's not scaling!!!!
@@ -283,7 +367,7 @@ class NodeGraphWidget(QtWidgets.QWidget):
 if __name__ == "__main__":
     # dialog = NodeGraphDialog()
     # dialog.show()
-    box = Input_window()
+    box = Input_window(output_template=ConnectionCollection())
     box.show()
 
 # add break node shortcut

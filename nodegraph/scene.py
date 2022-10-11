@@ -28,13 +28,19 @@ class Scene(QtWidgets.QGraphicsScene):
 
     """
 
-    def __init__(self, parent=None, nodegraph_widget=None, multiple_input_allowed=False, convert=None):
+    def __init__(self, parent=None, nodegraph_widget=None, multiple_input_allowed=False, convert=None, output_template=None):
         """Create an instance of this class
 
         """
         QtWidgets.QGraphicsScene.__init__(self, parent)
         self.parent = parent
         self.convert = convert
+        self.output_template = output_template
+
+        # if a class is passed in, initialize an instance
+        # if self.output_template:
+        #     self.output_template = self.output_template()
+
         self._nodegraph_widget = nodegraph_widget
         self._nodes = []
         self._edges_by_hash = {}
@@ -224,43 +230,82 @@ class Scene(QtWidgets.QGraphicsScene):
 
         # Delete item (to be sure it's not taken into account by any function
         # including but not limited to fitInView)
-        try:
             self.connections_dict = self.get_connections(target)
-        except UnboundLocalError as e:
-            pass
+
 
         print("delete line!")
         self.removeItem(self._interactive_edge)
         self._interactive_edge = None
 
+    def get_all_edges(self, target_node):
+        hash_list = [hash for hash in target_node.parent.edges if hash in self._edges_by_hash]
+        edge_list = []
+        for node_hash in hash_list:
+            edge_list.append(self._edges_by_hash[node_hash])
+        return edge_list
+
+    def delete_all_edges(self, target_node):
+        to_delete = self.get_all_edges(target_node)
+        self.delete_edges(to_delete)
+
+
     def get_connections(self, target_node):
         connection_dict = {}
-        for node_hash in target_node.parent.edges:
-            try:
+        hash_list = [hash for hash in target_node.parent.edges if hash in self._edges_by_hash]
+
+        if self.output_template is None:
+            for node_hash in hash_list:
+
                 source_name = self._edges_by_hash[node_hash]._source_slot._name
-            except KeyError:
-                pass
-
-            try:
                 target_name = self._edges_by_hash[node_hash]._target_slot._name
-            except KeyError:
-                pass
 
-            if self.convert:
-                # converts Translate X to tx
-                source = self.convert(source_name)
-                target = self.convert(target_name)
+                if self.convert:
+                    # converts Translate X to tx
+                    source = self.convert(source_name)
+                    target = self.convert(target_name)
 
-            else:
-                source = source_name
-                target = target_name
+                else:
+                    source = source_name
+                    target = target_name
 
-            if source in connection_dict:
-                if target not in connection_dict[source]:
-                    connection_dict[source].append(target)
+                if source in connection_dict:
+                    if target not in connection_dict[source]:
+                        connection_dict[source].append(target)
 
-            else:
-                connection_dict[source] = [target]
+                else:
+                    connection_dict[source] = [target]
+
+        else:
+            for node_hash in hash_list:
+
+                source_name = self._edges_by_hash[node_hash]._source_slot._name
+
+                invert_source = self._edges_by_hash[node_hash].double_click
+
+                target_name = self._edges_by_hash[node_hash]._target_slot._name
+
+
+                if self.convert:
+                    # converts Translate X to tx
+                    source = self.convert(source_name)
+                    target = self.convert(target_name)
+
+                else:
+                    source = source_name
+                    target = target_name
+
+                self.output_template.add(source, target, invert_source)
+
+
+            connection_dict = self.output_template.connection_dict
+
+                # if source in connection_dict:
+                #     if target not in connection_dict[source]:
+                #         connection_dict[source].append(target)
+                #
+                # else:
+                #     connection_dict[source] = [target]
+
 
         return connection_dict
 
@@ -312,14 +357,21 @@ class Scene(QtWidgets.QGraphicsScene):
 
             remove_source_name = self.convert(edge._source_slot._name)
             remove_target_name = self.convert(edge._target_slot._name)
-            if remove_source_name in self.connections_dict:
-                output_list = self.connections_dict[remove_source_name]
-                if len(output_list) < 2:
-                    self.connections_dict.pop(remove_source_name)
+
+            if self.output_template is None:
+                if remove_source_name in self.connections_dict:
+                    output_list = self.connections_dict[remove_source_name]
+                    if len(output_list) < 2:
+                        self.connections_dict.pop(remove_source_name)
+                    else:
+                        output_list.remove(remove_target_name)
                 else:
-                    output_list.remove(remove_target_name)
+                    print("not found")
+                    continue
             else:
-                continue
+                print("remove", remove_source_name, remove_target_name)
+                self.output_template.remove(remove_source_name, remove_target_name)
+
 
 
 
@@ -353,10 +405,14 @@ class Scene(QtWidgets.QGraphicsScene):
             remove_target_name = self.convert(edge._target_slot._name)
             output_list = self.connections_dict[remove_source_name]
 
-            if len(output_list) < 2:
-                self.connections_dict.pop(remove_source_name)
+            if self.output_template is None:
+                if len(output_list) < 2:
+                    self.connections_dict.pop(remove_source_name)
+                else:
+                    output_list.remove(remove_target_name)
+
             else:
-                output_list.remove(remove_target_name)
+                self.output_template.remove(remove_source_name, remove_target_name)
 
 
             # if self.connections_dict[self.convert(edge._source_slot)._name]
@@ -541,6 +597,18 @@ class Scene(QtWidgets.QGraphicsScene):
             print(type(selected[0]))
 
             selected[0].set_double_click(not selected[0].double_click)
+            if self.output_template:
+                source_name = selected[0]._source_slot._name
+                target_name = selected[0]._target_slot._name
+
+                if self.convert:
+                    # converts Translate X to tx
+                    source = self.convert(source_name)
+                    target = self.convert(target_name)
+
+            self.output_template.toggle_invert(source, target)
+
+            print(self.get_connections(selected[0]._target_slot))
             # print("Edit Node %s" % selected[0]._name)
 
     def _onSelectionChanged(self):
