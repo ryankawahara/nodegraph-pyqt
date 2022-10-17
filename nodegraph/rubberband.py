@@ -166,17 +166,8 @@ class RubberBand(QtWidgets.QGraphicsItem):
         operation = operation or self.REPLACE_SELECTION
         intersect = intersect or QtCore.Qt.ContainsItemBoundingRect
         current_selection = self.scene().selectedItems()
-        print(current_selection, operation == self.ADD_SELECTION)
-
-
-
 
         if operation == self.ADD_SELECTION:
-            # current_selection = self.scene().selectedItems()
-            # print(current_selection)
-            # self.scene().setSelectionArea(self.shape(), intersect)
-            # current_selection = self.scene().items()
-            # print(current_selection)
             rect = self._shape
             rect_scene = self.mapToScene(rect).boundingRect()
             selected = self.scene().items(rect_scene)
@@ -184,19 +175,23 @@ class RubberBand(QtWidgets.QGraphicsItem):
             for item in selected:
                 print(type(item))
                 item.setSelected(True)
+                if self.specific_color:
+                    try:
+                        item.invert_selected(True)
+                        item.refresh()
+                    except AttributeError:
+                        pass
 
         elif operation == self.MINUS_SELECTION:
-            # items = self.scene().items(self.shape(), intersect)
             rect = self._shape
             rect_scene = self.mapToScene(rect).boundingRect()
             selected = self.scene().items(rect_scene)
-
 
             for item in selected:
                 item.setSelected(False)
                 if self.specific_color:
                     try:
-                        item.set_double_click(False)
+                        item.invert_selected(False)
                         item.refresh()
                     except AttributeError:
                         pass
@@ -207,8 +202,7 @@ class RubberBand(QtWidgets.QGraphicsItem):
 
             for item in items:
                 item.setSelected(False)
-            # print(self.rubberBand.geometry())
-            # rect = self.mapToScene(self.)
+
             rect = self._shape
             rect_scene = self.mapToScene(rect).boundingRect()
             selected = self.scene().items(rect_scene)
@@ -219,25 +213,12 @@ class RubberBand(QtWidgets.QGraphicsItem):
             print(edges_to_delete)
             self.scene().delete_edges(edges_to_delete)
 
-
-
-
-
-            # print("disconnect")
-            # items = self.scene().items(self.shape(), intersect)
-            #
-            # for item in items:
-            #     if item.isSelected():
-            #         item.setSelected(False)
-            #     else:
-            #         item.setSelected(True)
         else:
             items = self.scene().items()
 
             for item in items:
                 item.setSelected(False)
-            # print(self.rubberBand.geometry())
-            # rect = self.mapToScene(self.)
+
             rect = self._shape
             rect_scene = self.mapToScene(rect).boundingRect()
             selected = self.scene().items(rect_scene)
@@ -246,9 +227,7 @@ class RubberBand(QtWidgets.QGraphicsItem):
 
                 if self.specific_color:
                     try:
-                        item.set_double_click(True)
+                        item.invert_selected(True)
+                        item.refresh()
                     except AttributeError:
                         pass
-
-            # self.scene().setSelectionArea(self.shape(), intersect)
-            # print(self.scene().items())

@@ -79,6 +79,8 @@ class Scene(QtWidgets.QGraphicsScene):
 
         self.selectionChanged.connect(self._onSelectionChanged)
 
+        self.only_allowed_connections = []
+
     @property
     def nodes(self):
         """Return all nodes
@@ -130,6 +132,10 @@ class Scene(QtWidgets.QGraphicsScene):
     def remove_edge(self, edge):
         del self._edges_by_hash[edge.hash]
 
+    def add_exclusive_connection(self, source, target):
+        print(source, target, "EXCLUSIVE")
+        self.only_allowed_connections.append((source,target))
+
     def start_interactive_edge(self, source_slot, mouse_pos):
         """Create an edge between source slot and mouse position
 
@@ -151,7 +157,6 @@ class Scene(QtWidgets.QGraphicsScene):
         and the slot given by connect_to
 
         """
-        print("That's no moon...", connect_to)
         self._is_interactive_edge = False
         if connect_to:
             eh = self._edges_by_hash  # shortcut
@@ -161,26 +166,22 @@ class Scene(QtWidgets.QGraphicsScene):
             if isinstance(connect_to, Node):
                 found = False
                 # Try to find most likely slot
-                print("NodeSlot.OUTPUT", NodeSlot.OUTPUT)
                 if source.family == NodeSlot.OUTPUT:
                     for slot in connect_to._inputs:
-
-                        if slot is connect_to._hover_slot:
-                            print("hooray!")
                         li = [h for h in eh if eh[h]._source_slot == slot or
                               eh[h]._target_slot == slot]
-                        print("li", li)
                         if not li:
                             connect_to = slot
                             found = True
                             break
                         for h in eh:
+                            # if (eh[h]._source_slot, eh[h]._target_slot) in self.only_allowed_connections:
+
                             if eh[h]._source_slot == slot:
                                 print(h, slot)
                                 connect_to = eh[h]
                 else:
                     connect_to = connect_to._outputs[0]
-                    print("couldn't find slot")
                     found = True
 
             # Resolve direction
@@ -189,9 +190,12 @@ class Scene(QtWidgets.QGraphicsScene):
             if source.family == NodeSlot.OUTPUT:
                 source = connect_to
                 target = self._interactive_edge._source_slot
-            print("Stay on target...", target)
+
             # Validate the connection
-            vals = [h for h in eh if eh[h]._target_slot == source]
+            # vals = [h for h in eh if eh[h]._target_slot == source]
+            #
+            # print("VALS", vals)
+
             # print(f"{source.family}, {target.family}, {source.parent._name}, {target.parent._name}, {vals}")
             if (found and
                     source.family != target.family and
@@ -210,23 +214,82 @@ class Scene(QtWidgets.QGraphicsScene):
                         # output = anoutput
                         pass
 
+                escape = False
+                for slot in self.only_allowed_connections:
+                    print(slot, source._name, target._name)
+
+                    if (source._name, target._name) == slot:
+                        escape = False
+                        self.delete_all_edges(source)
+                    elif slot[0] == source._name or slot[1] == target._name:
+                        escape = True
+
                 # allows multiple output nodes to connect to an input node
-                edge = self.create_edge(target, source)
+                if not escape:
+                    active_edge_connections = []
+                    edge = self.create_edge(target, source)
+                    print("ACTIVE")
+                    # active_slots = [inp for inp in source.parent._inputs if inp.active == True]
+                    active_slots = source.parent.active_inputs
+                    print(active_slots)
+
+
+                    for slots in active_slots:
+                        print(slots.edge)
+                        for edge in slots.edge:
+                            edge_obj = self.get_edge_by_hash(edge)
+                            if edge_obj:
+                                edge_nodes = edge_obj.slots
+                                edge_node_names = (edge_nodes[0].name, edge_nodes[1].name)
+                                active_edge_connections.append(edge_nodes)
+
+
+                    for connection in active_edge_connections:
+                        print("CONNECTIONS!!!")
+                        print(connection[0].name, connection[1].name)
+                        for pair in self.only_allowed_connections:
+                            if connection[0].name in pair or connection[1].name in pair:
+                                print(pair == (connection[0].name, connection[1].name))
+                                if len(active_edge_connections) > 1: # IF IT IS THE ONLY CONNECTION, LEAVE IT BE. OTHERWISE DELETE!
+                                    print("correctomundo!")
+                                    print(type(connection[1]))
+                                    print(connection[1].edge)
+                                    edge_to_delete = self.get_edge_by_hash(connection[1].edge[0])
+                                    res = edge_to_delete.slots
+                                    print(res[0].name, res[1].name)
+                                    self.delete_edges([edge_to_delete])
+
+                                # for couple in self.only_allowed_connections:
+                                #     print(edge_node_names, couple)
+                                #     if edge_node_names[0] in couple or edge_node_names[1] in couple:
+                                #         if edge_node_names != couple:
+                                #             self.delete_edges([edge_obj])
+                                #             print("CORRECT!")
+
+
+
+                                # print(edge_node_names, self.only_allowed_connections)
+                    #     for slot in slots:
+                    #         print(slot.edge, slot.edge.name)
+
+                    # for connection in self.only_allowed_connections:
+                    #     print("235")
+                    #     print(connection, self.only_allowed_connections, active_slots)
+                    #     edges_list = self.get_all_edges(source)
+                    #     print(connection.edge)
+                    #     # if connection[0] in active_slots or connection[1] in active_slots:
+                    #     #     print("delete all connection")
+                    #         # self.delete_all_edges(source)
+
+                    # print(source.parent._inputs)
+
+                    # is all > all active?
             else:
-                print("EXIT 195 HELLO WORLD")
-                print("source", source._edge)
+                # runs if there is already a connection in the target node
                 source_hashes = list(source._edge)
-                print(source.parent.edges)
-                print(self._edges_by_hash[list(source.parent.edges)[0]])
-                print(self._edges_by_hash[list(source.parent.edges)[0]]._source_slot._name)
-                source_slot_name = self._edges_by_hash[list(source.parent.edges)[0]]._source_slot._name
-                # IF this slot is ALREADY CONNECTED to the target then it should NOT connect. Edge would not get created.
-                print("target", target._edge)
-                # need to distinguish between having a line from one to another
+                # source_slot_name = self._edges_by_hash[list(source.parent.edges)[0]]._source_slot._name
                 if self.multiple_input_allowed:
                     edge = self.create_edge(target, source)
-                # TO DO: Send info to status bar
-
 
         # Delete item (to be sure it's not taken into account by any function
         # including but not limited to fitInView)
@@ -248,11 +311,57 @@ class Scene(QtWidgets.QGraphicsScene):
         to_delete = self.get_all_edges(target_node)
         self.delete_edges(to_delete)
 
+    def get_edge_by_hash(self, hash):
+        try:
+            res = self._edges_by_hash[hash]
+        except KeyError:
+            res = None
+
+        return res
+
+    def toggle_invert_all_edges(self, target_node, toggle):
+
+        to_invert = self.get_all_edges(target_node)
+        for edge in to_invert:
+            edge.double_click = toggle
+            if self.output_template:
+                source_name = edge._source_slot._name
+                target_name = edge._target_slot._name
+
+                if self.convert:
+                    # converts Translate X to tx
+                    source = self.convert(source_name)
+                    target = self.convert(target_name)
+
+                self.output_template.set_invert(source, target, toggle)
+
+            edge.refresh()
+
+
+    def invert_single_edge(self, edge, toggle):
+        if self.output_template:
+            source_name = edge._source_slot._name
+            target_name = edge._target_slot._name
+
+            if self.convert:
+                # converts Translate X to tx
+                source = self.convert(source_name)
+                target = self.convert(target_name)
+
+            self.output_template.set_invert(source, target, toggle)
+
+        edge.refresh()
+
+
+
+
+
+
 
     def get_connections(self, target_node):
         connection_dict = {}
         hash_list = [hash for hash in target_node.parent.edges if hash in self._edges_by_hash]
-
+        print("hash list", hash_list)
         if self.output_template is None:
             for node_hash in hash_list:
 
@@ -283,7 +392,7 @@ class Scene(QtWidgets.QGraphicsScene):
                 invert_source = self._edges_by_hash[node_hash].double_click
 
                 target_name = self._edges_by_hash[node_hash]._target_slot._name
-
+                print(source_name, target_name, invert_source)
 
                 if self.convert:
                     # converts Translate X to tx
@@ -606,7 +715,8 @@ class Scene(QtWidgets.QGraphicsScene):
                     source = self.convert(source_name)
                     target = self.convert(target_name)
 
-            self.output_template.toggle_invert(source, target)
+                self.output_template.toggle_invert(source, target)
+
 
             print(self.get_connections(selected[0]._target_slot))
             # print("Edit Node %s" % selected[0]._name)

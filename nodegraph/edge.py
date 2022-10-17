@@ -90,6 +90,10 @@ class Edge(QtWidgets.QGraphicsItem):
         self._update()
 
     @property
+    def slots(self):
+        return(self._source_slot, self._target_slot)
+
+    @property
     def hash(self):
         """Return the unique hash of this edge
 
@@ -176,8 +180,16 @@ class Edge(QtWidgets.QGraphicsItem):
         return self._shape.controlPointRect()
 
     def set_double_click(self, toggle):
+        # self.scene().invert_single_edge(self, toggle)
         self.double_click = toggle
         self.setSelected(False)
+
+    def invert_selected(self, toggle):
+        self.scene().invert_single_edge(self, toggle)
+        self.double_click = toggle
+
+        self.setSelected(False)
+
 
 
 

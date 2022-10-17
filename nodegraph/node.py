@@ -83,6 +83,14 @@ class Node(QtWidgets.QGraphicsItem):
         return self._name
 
     @property
+    def active_inputs(self):
+        return [inp for inp in self._inputs if inp.active == True]
+
+    @property
+    def active_inputs_by_name(self):
+        return [inp.name for inp in self._inputs if inp.active == True]
+
+    @property
     def edges(self):
         """Return all hashes of connected edges
 
@@ -452,6 +460,12 @@ class NodeSlot(object):
         self._family = family or self.INPUT
         self._rect = None
         self._edge = set()
+
+    @property
+    def active(self):
+        if len(self._edge) > 0:
+            return True
+        return False
 
     @property
     def name(self):

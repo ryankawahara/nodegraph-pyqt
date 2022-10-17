@@ -34,7 +34,7 @@ class ConnectionCollection:
                 self.connection_dict.pop(remove_source_name)
             else:
                 print(remove_target_name)
-                index = self.search_item_by_name(remove_target_name, output_list)
+                index = self.search_item_by_name(remove_target_name, output_list)   
                 print(index)
 
                 del output_list[index]
@@ -63,7 +63,15 @@ class ConnectionCollection:
     def toggle_invert(self, source_channel, target_channel):
         item_list = self.connection_dict[source_channel]
         index = self.search_item_by_name(target_channel, item_list)
+        print('before',item_list[index].invert )
         item_list[index].invert = not item_list[index].invert
+        print('after', item_list[index].invert)
+
+    def set_invert(self, source_channel, target_channel, invert):
+        item_list = self.connection_dict[source_channel]
+        index = self.search_item_by_name(target_channel, item_list)
+        item_list[index].invert = invert
+
 
 class ConnectionItem:
     def __init__(self, target_channel, invert):
@@ -147,7 +155,8 @@ class NodeGraphDialog(QtWidgets.QMainWindow):
         # edge = self.nodegraph.graph_scene.create_edge(
            # cam._outputs[0],
            # model._inputs[0])
-        print(type(target))
+
+
         # target._update_title("Ryan")
         # object_methods = [method_name for method_name in dir(target)
         #                   if callable(getattr(target, method_name))]
@@ -235,6 +244,8 @@ class Input_window(QtWidgets.QWidget):
         #                   if callable(getattr(target, method_name))]
         # print(object_methods)
 
+        self.nodegraph.graph_scene.add_exclusive_connection("All", "All")
+
 
 
         self.go_button = QtWidgets.QPushButton(self)
@@ -265,6 +276,7 @@ class Input_window(QtWidgets.QWidget):
         self.clear_button.setObjectName("clear_button")
         self.clear_button.setText("Clear")
 
+        self.invert_checkbox.stateChanged.connect(self.toggle_invert_all)
         self.clear_button.clicked.connect(self.delete_all_lines)
         self.gridLayout.addWidget(self.clear_button, 1, 1, 1, 1)
 
@@ -272,6 +284,10 @@ class Input_window(QtWidgets.QWidget):
 
     def delete_all_lines(self):
         self.nodegraph.graph_scene.delete_all_edges(self.target._inputs[0])
+
+    def toggle_invert_all(self):
+        invert_or_deinvert =  self.invert_checkbox.isChecked()
+        self.nodegraph.graph_scene.toggle_invert_all_edges(self.target._inputs[0], invert_or_deinvert)
 
     def execute(self):
         invert = self.invert_checkbox.isChecked()
