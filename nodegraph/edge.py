@@ -18,7 +18,8 @@ Edge definition including:
 """
 import hashlib
 from Qt import QtCore, QtGui, QtWidgets
-
+import maya.cmds as cmds
+# cmds.select(clear=True)
 # from constant import DEBUG
 from .polygons import ARROW_STANDARD, ARROW_SLIM
 from .node import NodeSlot
@@ -267,6 +268,9 @@ class Edge(QtWidgets.QGraphicsItem):
 
         """
         return
+
+    def mousePressEvent(self, event):
+        cmds.select(clear=True)
 
     def refresh(self, source_slot=None, target_slot=None):
         """Update start/end position if provided and force

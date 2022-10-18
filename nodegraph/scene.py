@@ -353,8 +353,20 @@ class Scene(QtWidgets.QGraphicsScene):
         edge.refresh()
 
 
+    def connect_all_slots(self, source_node, target_node, create):
+        if create:
+            if len(source_node.outputs) == len(target_node.inputs):
+                for ind in range(0,len(source_node.outputs)):
+                    self.create_edge(source_node.outputs[ind], target_node.inputs[ind])
+            else:
+                ind = 0
+                while ind < len(source_node.outputs):
+                    self.create_edge(source_node.outputs[ind], target_node.inputs[ind])
+                    ind +=1
+        else:
+            self.delete_all_edges(target_node.inputs[0])
 
-
+        self.connections_dict = self.get_connections(target_node.inputs[0])
 
 
 

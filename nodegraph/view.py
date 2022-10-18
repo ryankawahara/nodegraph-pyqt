@@ -128,7 +128,7 @@ class View(QtWidgets.QGraphicsView):
         if new_scale >= 1:
             # Maximum zoom limit reached.
             # Let's translate to center of rect with reset scale
-            self._scale = 1
+            # self._scale = 1
             self.resetTransform()
             self.centerOn(scene_rect.center())
         elif new_scale < 0.1:
@@ -148,6 +148,35 @@ class View(QtWidgets.QGraphicsView):
         else:
             self.scale_view(self._scale)
             self.centerOn(scene_rect.center())
+
+    # def scale_center_view(self, scale_factor, selected=False, padding=50):
+    #     """Set view transform in order to fit all/selected nodes in scene.
+    #
+    #     :param selected: If enabled, fit only selected nodes
+    #     :type selected: bool
+    #
+    #     :param padding: Add padding around the target rectangle
+    #     :type padding: int
+    #
+    #     """
+    #     # Resolve rectangle we want to zoom to
+    #     selection = self.scene().selectedItems()
+    #     scene_rect = self.scene().itemsBoundingRect()
+    #         # scene_rect = self.scene().get_nodes_bbox()
+    #     # Add a bit of padding
+    #     scene_rect.adjust(-padding, -padding, padding, padding)
+    #
+    #     # Compare ratio, find resulting scale
+    #     # view_ratio = float(self.size().width()) / float(self.size().height())
+    #     fit_ratio = scene_rect.width() / scene_rect.height()
+    #     # x_ratio = scene_rect.width() / float(self.size().width())
+    #     # y_ratio = scene_rect.height() / float(self.size().height())
+    #     # new_scale = 1 / max(x_ratio, y_ratio)
+    #     new_scale = scale_factor
+    #     print(new_scale, fit_ratio)
+    #
+    #     self.scale_view(new_scale, limits=False)
+    #     self.centerOn(scene_rect.center())
 
     def translate_view(self, offset):
         """Translate view by the given offset

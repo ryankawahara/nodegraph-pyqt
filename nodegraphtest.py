@@ -108,6 +108,7 @@ class NodeGraphDialog(QtWidgets.QMainWindow):
         self.setWindowTitle("Node graph -")
 
         # center = self.nodegraph.graph_view.sceneRect().center()
+
         source = self.nodegraph.graph_scene.create_node(
             "Source",
             inputs=[],
@@ -129,7 +130,8 @@ class NodeGraphDialog(QtWidgets.QMainWindow):
             selectable = False,
             movable = False,
         )
-        source.setPos(-200, 0)
+        # source.setPos(self.nodegraph.graph_scene.width()-200, 0)
+        # source.setPos(-200, 0)
         target = self.nodegraph.graph_scene.create_node(
             "Target",
             inputs=[
@@ -167,9 +169,12 @@ class Input_window(QtWidgets.QWidget):
     def __init__(self, output_template=None):
         super(Input_window, self).__init__(parent=None)
 
+
+
         self.output_template = output_template
         self.setObjectName("Dialog")
         self.resize(500, 450)
+        self.setMinimumSize(400,350)
         self.gridLayout = QtWidgets.QGridLayout(self)
         self.gridLayout.setObjectName("gridLayout")
         self.set_source = QtWidgets.QPushButton(self)
@@ -186,6 +191,7 @@ class Input_window(QtWidgets.QWidget):
         self.widget = QtWidgets.QWidget(self)
         self.widget.setObjectName("widget")
         self.gridLayout.addWidget(self.widget, 2, 0, 1, 2)
+        self.window_size = self.widget.size()
 
         self.nodegraph = NodeGraphWidget("main", parent=self, output_template=self.output_template)
         self.nodegraph.mousePressEvent = lambda event: cmds.select(clear=True)
@@ -195,7 +201,6 @@ class Input_window(QtWidgets.QWidget):
             "Source",
             inputs=[],
             outputs=[
-                "All",
                 "Translate X",
                 "Translate Y",
                 "Translate Z",
@@ -213,10 +218,12 @@ class Input_window(QtWidgets.QWidget):
             movable=False,
         )
         self.source.setPos(-200, 0)
+        print("WIDTH", self.nodegraph.graph_scene.width())
+        # self.source.setPos(self.nodegraph.graph_scene.width(), 0)
+
         self.target = self.nodegraph.graph_scene.create_node(
             "Target",
             inputs=[
-                "All",
                 "Translate X",
                 "Translate Y",
                 "Translate Z",
@@ -234,7 +241,17 @@ class Input_window(QtWidgets.QWidget):
             selectable=False,
             movable=False,
         )
+        # view_center = self.nodegraph.graph_view.mapToScene(self.nodegraph.graph_view.viewport().rect().center())
+        # center = self.nodegraph.graph_view.sceneRect().center()
         self.target.setPos(150, 0)
+        # self.target.setPos(QtCore.QPointF(0,0))
+        # print("remapped center", self.nodegraph.graph_view.mapToScene(self.nodegraph.graph_view.viewport().rect().center()) )
+        # print("remapped rect", self.nodegraph.graph_view.mapToScene(self.nodegraph.graph_view.viewport().rect()))
+        # print("WIDTH", view_rect.boundingRect().width())
+
+        # view_rect = self.nodegraph.graph_view.mapToScene(self.nodegraph.graph_view.viewport().rect())
+        # width = view_rect.boundingRect().width()
+        # self.target.setPos(width+54, 0)
         # edge = self.nodegraph.graph_scene.create_edge(
         # cam._outputs[0],
         # model._inputs[0])
@@ -244,16 +261,23 @@ class Input_window(QtWidgets.QWidget):
         #                   if callable(getattr(target, method_name))]
         # print(object_methods)
 
-        self.nodegraph.graph_scene.add_exclusive_connection("All", "All")
+        # self.nodegraph.graph_scene.add_exclusive_connection("All", "All")
 
 
 
         self.go_button = QtWidgets.QPushButton(self)
         self.go_button.setObjectName("go_button")
         self.gridLayout.addWidget(self.go_button, 3, 0, 1, 2)
+
+        self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        self.select_all_checkbox = QtWidgets.QCheckBox(self)
+        self.select_all_checkbox.setObjectName("select_all_checkbox")
+        self.horizontalLayout.addWidget(self.select_all_checkbox, 0, QtCore.Qt.AlignHCenter)
         self.invert_checkbox = QtWidgets.QCheckBox(self)
         self.invert_checkbox.setObjectName("invert_checkbox")
-        self.gridLayout.addWidget(self.invert_checkbox, 1, 0, 1, 1, QtCore.Qt.AlignRight)
+        self.horizontalLayout.addWidget(self.invert_checkbox, 0, QtCore.Qt.AlignHCenter)
+        self.gridLayout.addLayout(self.horizontalLayout, 1, 0, 1, 1)
 
         self.set_source.clicked.connect(self.set_source_object)
         self.go_button.clicked.connect(self.execute)
@@ -264,6 +288,7 @@ class Input_window(QtWidgets.QWidget):
         self.set_target.setText("Set Target")
         self.go_button.setText("Zhu Li! Do the thing!")
         self.invert_checkbox.setText("Invert All")
+        self.select_all_checkbox.setText("Select All")
 
         self.clear_button = QtWidgets.QPushButton(self)
         font = QtGui.QFont()
@@ -277,12 +302,47 @@ class Input_window(QtWidgets.QWidget):
         self.clear_button.setText("Clear")
 
         self.invert_checkbox.stateChanged.connect(self.toggle_invert_all)
+        self.select_all_checkbox.stateChanged.connect(self.connect_all_slots)
         self.clear_button.clicked.connect(self.delete_all_lines)
         self.gridLayout.addWidget(self.clear_button, 1, 1, 1, 1)
 
         QtCore.QMetaObject.connectSlotsByName(self)
 
+    # def resizeEvent(self, event: QtGui.QResizeEvent):
+    #     print(self.widget.size())
+    #     old_size = self.window_size
+    #     old_area = old_size.width() * old_size.height()
+    #     new_size = self.widget.size()
+    #     new_area = new_size.width() * new_size.height()
+    #     resize_scale = new_area/old_area
+    #     print(new_area, old_area, new_area/old_area)
+    #     self.window_size = new_size
+    #
+    #     view_center = self.nodegraph.graph_view.mapToScene(self.nodegraph.graph_view.viewport().rect().center())
+    #     center = self.nodegraph.graph_view.sceneRect().center()
+    #
+    #     print(f"view center: {view_center}, center: {center}")
+    #
+    #     view_rect = self.nodegraph.graph_view.mapToScene(self.nodegraph.graph_view.viewport().rect())
+    #     width = view_rect.boundingRect().width()
+    #
+    #
+    #     # print("center", view_rect.center())
+    #     diff = width-96
+    #     # self.target.moveBy(25,0)
+    #     # print("POS", 150+diff)
+    #     # self.nodegraph.graph_view.scale_center_view(resize_scale)
+    #     # source.setPos(self.nodegraph.graph_scene.width() - 200, 0)
+
+
+    def connect_all_slots(self):
+        create_or_delete = self.select_all_checkbox.isChecked()
+        self.nodegraph.graph_scene.delete_all_edges(self.target.inputs[0])
+        self.nodegraph.graph_scene.connect_all_slots(self.source, self.target, create_or_delete)
+
+
     def delete_all_lines(self):
+        self.select_all_checkbox.setChecked(False)
         self.nodegraph.graph_scene.delete_all_edges(self.target._inputs[0])
 
     def toggle_invert_all(self):
@@ -299,24 +359,41 @@ class Input_window(QtWidgets.QWidget):
         print(self.nodegraph.graph_scene.connections_dict)
         res = ""
         for key, val in self.nodegraph.graph_scene.connections_dict.items():
+
             res += f"|{key}|"
             for v in val:
+                print("indiv val", type(v))
                 res += f"[{v}]"
             res += ", "
         print(res)
         #self.animation_copier.store_target(target_objects)
+
         for obj in self.target_objects:
             self.animation_copier.store_target(obj)
-
-            for src, targets in channel_dict.items():
+            for source_chan, target_chan_list in self.nodegraph.graph_scene.connections_dict.items():
                 self.animation_copier.clear_target_channels()
-                self.animation_copier.set_source_channel(src)
-                for trgt in targets:
-                    print(src, trgt)
-                    self.animation_copier.set_target_channel(trgt)
-                    print(self.animation_copier.source, self.animation_copier.target, self.animation_copier.selectedTargets, self.animation_copier.sourceChannel)
+                self.animation_copier.set_source_channel(source_chan)
+                for target_chan in target_chan_list:
+                    self.animation_copier.set_target_channel(target_chan.target_channel)
+                    self.animation_copier.copyAnimation(invert=target_chan.invert)
 
-                    self.animation_copier.copyAnimation()
+
+
+
+
+        #
+        # for obj in self.target_objects:
+        #     self.animation_copier.store_target(obj)
+        #
+        #     for src, targets in channel_dict.items():
+        #         self.animation_copier.clear_target_channels()
+        #         self.animation_copier.set_source_channel(src)
+        #         for trgt in targets:
+        #             print(src, trgt)
+        #             self.animation_copier.set_target_channel(trgt)
+        #             print(self.animation_copier.source, self.animation_copier.target, self.animation_copier.selectedTargets, self.animation_copier.sourceChannel)
+        #
+        #             self.animation_copier.copyAnimation()
         #
         # except UnboundLocalError as e:
         #     pass

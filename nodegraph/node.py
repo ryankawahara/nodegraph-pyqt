@@ -76,6 +76,14 @@ class Node(QtWidgets.QGraphicsItem):
         self._update()
 
     @property
+    def inputs(self):
+        return self._inputs
+
+    @property
+    def outputs(self):
+        return self._outputs
+
+    @property
     def name(self):
         """Return the family of the slot
 
