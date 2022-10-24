@@ -18,6 +18,7 @@ Base node definition including:
 """
 # import sha
 from Qt import QtCore, QtGui, QtWidgets
+import PySide2
 
 # from constant import DEBUG
 
@@ -49,6 +50,8 @@ class Node(QtWidgets.QGraphicsItem):
         self._rect_slot = None
         self._hover_slot = False
         self.update_title = None
+
+        self.label_rect_size = None
 
         if selectable:
             self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable)
@@ -132,6 +135,7 @@ class Node(QtWidgets.QGraphicsItem):
             self._outputs[i].rect = QtCore.QRectF(self._draw_slot).translated(
                 self._width - self._slot_radius, init_y + slot_height * i)
 
+
         # Update inputs
         init_y = base_y - slot_height * len(self._inputs) / 2
         print("in init y", init_y)
@@ -194,6 +198,7 @@ class Node(QtWidgets.QGraphicsItem):
                                    self._outline / 2,
                                    self._width - self._outline,
                                    self._label_height - self._outline / 2)
+        self.label_rect_size = (label_rect.width(), label_rect.height())
         painter.drawRect(label_rect)
 
         # Draw text
@@ -365,7 +370,11 @@ class Node(QtWidgets.QGraphicsItem):
             #     event.accept()
             #     return
             for anoutput in self._outputs:
-                if anoutput._rect.contains(event.pos()):
+                # need to add anoutput_.rect + label width
+                left_margin = PySide2.QtCore.QMarginsF(self.label_rect_size[0], 0, 0, 0)
+                print(self.label_rect_size)
+                start_zone = anoutput._rect + left_margin
+                if start_zone.contains(event.pos()):
                     mouse_pos = self.mapToScene(event.pos())
                     self.scene().start_interactive_edge(anoutput, mouse_pos)
                     self.scene().store_source_node(anoutput)

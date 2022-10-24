@@ -89,82 +89,6 @@ class ConnectionItem:
         return False
 
 
-
-class NodeGraphDialog(QtWidgets.QMainWindow):
-
-    """
-    Handles top level dialog of Node grap
-    """
-
-    def __init__(self, parent=None):
-
-
-        QtWidgets.QMainWindow.__init__(self, parent)
-        self.parent = parent or self
-
-        self.nodegraph = NodeGraphWidget("main", parent=self.parent)
-        self.setCentralWidget(self.nodegraph)
-        self.resize(800, 600)
-        self.setWindowTitle("Node graph -")
-
-        # center = self.nodegraph.graph_view.sceneRect().center()
-
-        source = self.nodegraph.graph_scene.create_node(
-            "Source",
-            inputs=[],
-            outputs=[
-                "All",
-                "Translate X",
-                "Translate Y",
-                "Translate Z",
-                "Rotate X",
-                "Rotate Y",
-                "Rotate Z",
-                "Scale X",
-                "Scale Y",
-                "Scale Z",
-                "csV"
-            ],
-            width=180,
-            height=360,
-            selectable = False,
-            movable = False,
-        )
-        # source.setPos(self.nodegraph.graph_scene.width()-200, 0)
-        # source.setPos(-200, 0)
-        target = self.nodegraph.graph_scene.create_node(
-            "Target",
-            inputs=[
-                "All",
-                "Translate X",
-                "Translate Y",
-                "Translate Z",
-                "Rotate X",
-                "Rotate Y",
-                "Rotate Z",
-                "Scale X",
-                "Scale Y",
-                "Scale Z",
-                "Visibility"
-            ],
-            outputs=[],
-            width = 180,
-            height = 360,
-            selectable = False,
-            movable = False,
-        )
-        target.setPos(150, 0)
-        # edge = self.nodegraph.graph_scene.create_edge(
-           # cam._outputs[0],
-           # model._inputs[0])
-
-
-        # target._update_title("Ryan")
-        # object_methods = [method_name for method_name in dir(target)
-        #                   if callable(getattr(target, method_name))]
-        # print(object_methods)
-
-
 class Input_window(QtWidgets.QWidget):
     def __init__(self, output_template=None):
         super(Input_window, self).__init__(parent=None)
@@ -172,7 +96,7 @@ class Input_window(QtWidgets.QWidget):
 
 
         self.output_template = output_template
-        self.setObjectName("Dialog")
+        self.setObjectName("Copy Animation")
         self.resize(500, 450)
         self.setMinimumSize(400,350)
         self.gridLayout = QtWidgets.QGridLayout(self)
@@ -192,26 +116,18 @@ class Input_window(QtWidgets.QWidget):
         self.widget.setObjectName("widget")
         self.gridLayout.addWidget(self.widget, 2, 0, 1, 2)
         self.window_size = self.widget.size()
-
-        self.nodegraph = NodeGraphWidget("main", parent=self, output_template=self.output_template)
+        attr_dict_names, attr_dict = self.setup_attributes()
+        self.nodegraph = NodeGraphWidget("main", parent=self, output_template=self.output_template, attributes=attr_dict)
         self.nodegraph.mousePressEvent = lambda event: cmds.select(clear=True)
         self.gridLayout.addWidget(self.nodegraph, 2, 0, 1, 2)
+
+
+
 
         self.source = self.nodegraph.graph_scene.create_node(
             "Source",
             inputs=[],
-            outputs=[
-                "Translate X",
-                "Translate Y",
-                "Translate Z",
-                "Rotate X",
-                "Rotate Y",
-                "Rotate Z",
-                "Scale X",
-                "Scale Y",
-                "Scale Z",
-                "csV"
-            ],
+            outputs=attr_dict_names,
             width=180,
             height=360,
             selectable=False,
@@ -223,47 +139,15 @@ class Input_window(QtWidgets.QWidget):
 
         self.target = self.nodegraph.graph_scene.create_node(
             "Target",
-            inputs=[
-                "Translate X",
-                "Translate Y",
-                "Translate Z",
-                "Rotate X",
-                "Rotate Y",
-                "Rotate Z",
-                "Scale X",
-                "Scale Y",
-                "Scale Z",
-                "Visibility"
-            ],
+            inputs=attr_dict_names,
             outputs=[],
             width=180,
             height=360,
             selectable=False,
             movable=False,
         )
-        # view_center = self.nodegraph.graph_view.mapToScene(self.nodegraph.graph_view.viewport().rect().center())
-        # center = self.nodegraph.graph_view.sceneRect().center()
+
         self.target.setPos(150, 0)
-        # self.target.setPos(QtCore.QPointF(0,0))
-        # print("remapped center", self.nodegraph.graph_view.mapToScene(self.nodegraph.graph_view.viewport().rect().center()) )
-        # print("remapped rect", self.nodegraph.graph_view.mapToScene(self.nodegraph.graph_view.viewport().rect()))
-        # print("WIDTH", view_rect.boundingRect().width())
-
-        # view_rect = self.nodegraph.graph_view.mapToScene(self.nodegraph.graph_view.viewport().rect())
-        # width = view_rect.boundingRect().width()
-        # self.target.setPos(width+54, 0)
-        # edge = self.nodegraph.graph_scene.create_edge(
-        # cam._outputs[0],
-        # model._inputs[0])
-        print(type(self.target))
-        # self.target._update_title("Ryan")
-        # object_methods = [method_name for method_name in dir(target)
-        #                   if callable(getattr(target, method_name))]
-        # print(object_methods)
-
-        # self.nodegraph.graph_scene.add_exclusive_connection("All", "All")
-
-
 
         self.go_button = QtWidgets.QPushButton(self)
         self.go_button.setObjectName("go_button")
@@ -283,7 +167,7 @@ class Input_window(QtWidgets.QWidget):
         self.go_button.clicked.connect(self.execute)
         self.set_target.clicked.connect(self.set_target_objects)
 
-        self.setWindowTitle("Dialog")
+        self.setWindowTitle("Copy Animation")
         self.set_source.setText("Set Source")
         self.set_target.setText("Set Target")
         self.go_button.setText("Zhu Li! Do the thing!")
@@ -334,6 +218,29 @@ class Input_window(QtWidgets.QWidget):
     #     # self.nodegraph.graph_view.scale_center_view(resize_scale)
     #     # source.setPos(self.nodegraph.graph_scene.width() - 200, 0)
 
+    def setup_attributes(self):
+        outputs = [
+            "Translate X",
+            "Translate Y",
+            "Translate Z",
+            "Rotate X",
+            "Rotate Y",
+            "Rotate Z",
+            "Scale X",
+            "Scale Y",
+            "Scale Z",
+            "csV"
+        ]
+
+        attr_dict = {}
+        for attr in outputs:
+            attr_dict[attr] = attr.lower()[0] + attr.lower()[-1]
+
+        attr_dict["Visibility"] = "visibility"
+
+        attr_dict_names = attr_dict.keys()
+
+        return attr_dict_names, attr_dict
 
     def connect_all_slots(self):
         create_or_delete = self.select_all_checkbox.isChecked()
@@ -410,8 +317,13 @@ class Input_window(QtWidgets.QWidget):
         print("hi")
         sel = cmds.ls(sl=True)
         self.target_objects = sel
-
-        self.target._update_title(f"{len(self.target_objects)} Objects")
+        if len(sel) > 1:
+            self.target._update_title(f"{len(self.target_objects)} Objects")
+            objs = ''.join(f'{obj}\n' for obj in self.target_objects)
+            objs = objs.strip()
+            self.target.setToolTip(objs)
+        else:
+            self.target._update_title(self.target_objects[0])
 
 
 
@@ -434,17 +346,19 @@ class NodeGraphWidget(QtWidgets.QWidget):
     Handles node graph view
     """
 
-    def __init__(self, name, parent=None, output_template=None):
+    def __init__(self, name, parent=None, output_template=None, attributes=None):
         QtWidgets.QWidget.__init__(self, parent)
         self.name = name
         self.parent = parent
+        self.attributes = attributes
         
-        convert_func = lambda name:name.lower()[0] + name.lower()[-1]
+        # convert_func = lambda name:name.lower()[0] + name.lower()[-1]
         self.graph_scene = Scene(parent=self.parent,
                                  nodegraph_widget=self,
                                  multiple_input_allowed=False,
-                                 convert = convert_func,
-                                 output_template = output_template)
+                                 # convert = convert_func,
+                                 output_template = output_template,
+                                 attributes=self.attributes)
         self.graph_view = View(self.graph_scene, parent=self.parent, is_zoom=False, scale=0.85)
         self.graph_view.mousePressedEvent = lambda event: cmds.select(clear=True)
         # find out why it's not scaling!!!!

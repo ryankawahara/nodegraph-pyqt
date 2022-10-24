@@ -13,7 +13,7 @@
 
 """
 from Qt import QtCore, QtGui, QtWidgets
-
+import PySide2
 from .node import Node, NodeSlot
 from .edge import Edge, InteractiveEdge
 from .rubberband import RubberBand
@@ -28,7 +28,7 @@ class Scene(QtWidgets.QGraphicsScene):
 
     """
 
-    def __init__(self, parent=None, nodegraph_widget=None, multiple_input_allowed=False, convert=None, output_template=None):
+    def __init__(self, parent=None, nodegraph_widget=None, multiple_input_allowed=False, convert=None, output_template=None, attributes=None):
         """Create an instance of this class
 
         """
@@ -36,6 +36,7 @@ class Scene(QtWidgets.QGraphicsScene):
         self.parent = parent
         self.convert = convert
         self.output_template = output_template
+        self.attributes = attributes
 
         # if a class is passed in, initialize an instance
         # if self.output_template:
@@ -192,19 +193,12 @@ class Scene(QtWidgets.QGraphicsScene):
                 target = self._interactive_edge._source_slot
 
             # Validate the connection
-            # vals = [h for h in eh if eh[h]._target_slot == source]
-            #
-            # print("VALS", vals)
 
-            # print(f"{source.family}, {target.family}, {source.parent._name}, {target.parent._name}, {vals}")
             if (found and
                     source.family != target.family and
                     source.parent != target.parent and
                     not [h for h in eh if eh[h]._target_slot == source]):
 
-                # TO DO: Check new edge isn't creating a loop, i.e that the
-                # source node opposite slot(s) are(n't) connected to the target
-                # node
                 if source.family == NodeSlot.OUTPUT:
                     print(NodeSlot.OUTPUT, source.parent._inputs)
                     for aninput in source.parent._inputs:
@@ -328,6 +322,9 @@ class Scene(QtWidgets.QGraphicsScene):
                 source_name = edge._source_slot._name
                 target_name = edge._target_slot._name
 
+                # check if type of input is dict or list
+
+
                 if self.convert:
                     # converts Translate X to tx
                     source = self.convert(source_name)
@@ -343,7 +340,10 @@ class Scene(QtWidgets.QGraphicsScene):
             source_name = edge._source_slot._name
             target_name = edge._target_slot._name
 
-            if self.convert:
+            if self.attributes:
+                source = self.attributes[source_name]
+                target = self.attributes[target_name]
+            elif self.convert:
                 # converts Translate X to tx
                 source = self.convert(source_name)
                 target = self.convert(target_name)
@@ -380,7 +380,10 @@ class Scene(QtWidgets.QGraphicsScene):
                 source_name = self._edges_by_hash[node_hash]._source_slot._name
                 target_name = self._edges_by_hash[node_hash]._target_slot._name
 
-                if self.convert:
+                if self.attributes:
+                    source = self.attributes[source_name]
+                    target = self.attributes[target_name]
+                elif self.convert:
                     # converts Translate X to tx
                     source = self.convert(source_name)
                     target = self.convert(target_name)
@@ -406,7 +409,10 @@ class Scene(QtWidgets.QGraphicsScene):
                 target_name = self._edges_by_hash[node_hash]._target_slot._name
                 print(source_name, target_name, invert_source)
 
-                if self.convert:
+                if self.attributes:
+                    source = self.attributes[source_name]
+                    target = self.attributes[target_name]
+                elif self.convert:
                     # converts Translate X to tx
                     source = self.convert(source_name)
                     target = self.convert(target_name)
@@ -676,7 +682,9 @@ class Scene(QtWidgets.QGraphicsScene):
             if hasattr(connect_to,'_inputs'):
                 for input in connect_to._inputs:
                     sceneMouse = event.scenePos() - connect_to.mapToScene(event.pos())
-                    if input._rect.contains(sceneMouse):
+                    right_margin = PySide2.QtCore.QMarginsF(0, 0, 174, 0)
+                    end_zone = input._rect + right_margin
+                    if end_zone.contains(sceneMouse):
                         print(input._name, "YAY")
                         target_node = input
             else:
