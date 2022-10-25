@@ -8,7 +8,6 @@ import sys
 
 # import networkx
 from Qt import QtWidgets, QtGui, QtCore
-
 from nodegraph.scene import Scene
 from nodegraph.view import View
 
@@ -122,8 +121,6 @@ class Input_window(QtWidgets.QWidget):
         self.gridLayout.addWidget(self.nodegraph, 2, 0, 1, 2)
 
 
-
-
         self.source = self.nodegraph.graph_scene.create_node(
             "Source",
             inputs=[],
@@ -229,7 +226,6 @@ class Input_window(QtWidgets.QWidget):
             "Scale X",
             "Scale Y",
             "Scale Z",
-            "csV"
         ]
 
         attr_dict = {}
@@ -237,10 +233,25 @@ class Input_window(QtWidgets.QWidget):
             attr_dict[attr] = attr.lower()[0] + attr.lower()[-1]
 
         attr_dict["Visibility"] = "visibility"
+        # attr_dict[""] = ""
+
 
         attr_dict_names = attr_dict.keys()
 
+        # insert spacers
+        attr_dict_names = self.insert_gaps([3,7,11], attr_dict_names)
+
         return attr_dict_names, attr_dict
+
+    def insert_gaps(self, spacer_index_locations, attr_dict_names):
+        attr_dict_names = list(attr_dict_names)
+        for indx in spacer_index_locations:
+            attr_dict_names.insert(indx, "")
+
+        return attr_dict_names
+
+
+
 
     def connect_all_slots(self):
         create_or_delete = self.select_all_checkbox.isChecked()
@@ -305,25 +316,126 @@ class Input_window(QtWidgets.QWidget):
         # except UnboundLocalError as e:
         #     pass
 
+    def add_user_defined_attributes(self, node, ud_attr):
+        self.nodegraph.graph_scene.delete_node(node)
+        attr_dict_names, attr_dict = self.setup_attributes()
+        attr_dict_names.append("")
+        attr_dict_names += ud_attr
+
+        for attr in ud_attr:
+            self.nodegraph.attributes[attr] = attr
+
+        return attr_dict_names
+
+    def reset_source_node(self):
+        self.nodegraph.graph_scene.delete_node(self.source)
+        attr_dict_names, attr_dict = self.setup_attributes()
+
+        self.source = self.nodegraph.graph_scene.create_node(
+            "Source",
+            inputs=[],
+            outputs=attr_dict_names,
+            width=180,
+            height=360,
+            selectable=False,
+            movable=False,
+        )
+        self.source.setPos(-200, 0)
+
+    def reset_target_node(self):
+        self.nodegraph.graph_scene.delete_node(self.target)
+        attr_dict_names, attr_dict = self.setup_attributes()
+
+        self.target = self.nodegraph.graph_scene.create_node(
+            "Target",
+            inputs=attr_dict_names,
+            outputs=[],
+            width=180,
+            height=360,
+            selectable=False,
+            movable=False,
+        )
+        self.target.setPos(150, 0)
+
+
     def set_source_object(self):
         sel = cmds.ls(sl=True)
-        target_item = sel[0]
-        self.animation_copier.clear_source()
-        self.animation_copier.store_source(target_item)
-        self.source._update_title(target_item)
+        if len(sel) > 0:
+            source_item = sel[0]
+            ud_attr = cmds.listAttr(source_item, ud=True)
+            if ud_attr:
+                attr_dict_names = self.add_user_defined_attributes(self.source, ud_attr)
+
+                self.source = self.nodegraph.graph_scene.create_node(
+                    "Source",
+                    inputs=[],
+                    outputs=attr_dict_names,
+                    width=180,
+                    height=360,
+                    selectable=False,
+                    movable=False,
+                )
+                self.source.setPos(-200, 0)
+            else:
+                # reset to default
+                self.reset_source_node()
+            self.animation_copier.clear_source()
+            self.animation_copier.store_source(source_item)
+            self.source._update_title(source_item)
+
+        else:
+            self.source._update_title("Source")
+            self.reset_source_node()
+            warning = QtWidgets.QMessageBox()
+            warning.setText("No source item selected")
+            warning.setIcon(QtWidgets.QMessageBox.Warning)
+            warning.exec()
+
 
     def set_target_objects(self):
         self.animation_copier.clear_target()
-        print("hi")
         sel = cmds.ls(sl=True)
+        print(sel)
+        shared_targ_attrs = set(cmds.listAttr(sel[0], ud=True))
+        for obj in sel[1:]:
+            shared_targ_attrs.intersection_update(cmds.listAttr(obj, ud=True))
+
+
+        if len(shared_targ_attrs) > 0:
+            attr_dict_names = self.add_user_defined_attributes(self.target, list(shared_targ_attrs))
+
+            self.target = self.nodegraph.graph_scene.create_node(
+                "Target",
+                inputs=attr_dict_names,
+                outputs=[],
+                width=180,
+                height=360,
+                selectable=False,
+                movable=False,
+            )
+            self.target.setPos(150, 0)
+        else:
+            self.reset_target_node()
+
         self.target_objects = sel
         if len(sel) > 1:
             self.target._update_title(f"{len(self.target_objects)} Objects")
             objs = ''.join(f'{obj}\n' for obj in self.target_objects)
             objs = objs.strip()
             self.target.setToolTip(objs)
-        else:
+        elif len(sel) == 1:
             self.target._update_title(self.target_objects[0])
+
+        else:
+            self.target._update_title("Target")
+            self.reset_target_node()
+            warning = QtWidgets.QMessageBox()
+            warning.setText("No target items selected")
+            warning.setIcon(QtWidgets.QMessageBox.Warning)
+            warning.exec()
+
+
+
 
 
 
@@ -360,6 +472,7 @@ class NodeGraphWidget(QtWidgets.QWidget):
                                  output_template = output_template,
                                  attributes=self.attributes)
         self.graph_view = View(self.graph_scene, parent=self.parent, is_zoom=False, scale=0.85)
+        self.graph_view.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
         self.graph_view.mousePressedEvent = lambda event: cmds.select(clear=True)
         # find out why it's not scaling!!!!
         self.horizontal_layout = QtWidgets.QHBoxLayout(self)
@@ -372,8 +485,13 @@ class NodeGraphWidget(QtWidgets.QWidget):
 
 
 if __name__ == "__main__":
-    # dialog = NodeGraphDialog()
-    # dialog.show()
+
+    window_name = "Copy Animation"
+
+    # this prevents duplication of the window
+    if cmds.window(window_name, ex=True):
+        cmds.deleteUI(window_name)
+
     box = Input_window(output_template=ConnectionCollection())
     box.show()
 

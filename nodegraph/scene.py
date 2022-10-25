@@ -324,8 +324,10 @@ class Scene(QtWidgets.QGraphicsScene):
 
                 # check if type of input is dict or list
 
-
-                if self.convert:
+                if self.attributes:
+                    source = self.attributes[source_name]
+                    target = self.attributes[target_name]
+                elif self.convert:
                     # converts Translate X to tx
                     source = self.convert(source_name)
                     target = self.convert(target_name)
@@ -357,11 +359,13 @@ class Scene(QtWidgets.QGraphicsScene):
         if create:
             if len(source_node.outputs) == len(target_node.inputs):
                 for ind in range(0,len(source_node.outputs)):
-                    self.create_edge(source_node.outputs[ind], target_node.inputs[ind])
+                    if source_node.outputs[ind]._name != "":
+                        self.create_edge(source_node.outputs[ind], target_node.inputs[ind])
             else:
                 ind = 0
-                while ind < len(source_node.outputs):
-                    self.create_edge(source_node.outputs[ind], target_node.inputs[ind])
+                while ind < len(source_node.outputs)-1:
+                    if source_node.outputs[ind]._name != "":
+                        self.create_edge(source_node.outputs[ind], target_node.inputs[ind])
                     ind +=1
         else:
             self.delete_all_edges(target_node.inputs[0])
@@ -481,9 +485,12 @@ class Scene(QtWidgets.QGraphicsScene):
         for edge in edges_to_delete:
             self.removeItem(edge)
             self.remove_edge(edge)
-
-            remove_source_name = self.convert(edge._source_slot._name)
-            remove_target_name = self.convert(edge._target_slot._name)
+            if self.attributes:
+                remove_source_name = self.attributes[edge._source_slot._name]
+                remove_target_name = self.attributes[edge._target_slot._name]
+            elif self.convert:
+                remove_source_name = self.convert(edge._source_slot._name)
+                remove_target_name = self.convert(edge._target_slot._name)
 
             if self.output_template is None:
                 if remove_source_name in self.connections_dict:
@@ -500,7 +507,15 @@ class Scene(QtWidgets.QGraphicsScene):
                 self.output_template.remove(remove_source_name, remove_target_name)
 
 
+    def delete_node(self, node):
+        self.removeItem(node)
+        index = self._nodes.index(node)
+        self._nodes.pop(index)
 
+        self.redraw_scene()
+
+    def redraw_scene(self):
+        self.invalidate()
 
     def delete_selected(self):
         """Delete selected nodes and edges
@@ -527,9 +542,12 @@ class Scene(QtWidgets.QGraphicsScene):
         for edge in edges:
             self.removeItem(edge)
             self.remove_edge(edge)
-
-            remove_source_name = self.convert(edge._source_slot._name)
-            remove_target_name = self.convert(edge._target_slot._name)
+            if self.attributes:
+                remove_source_name = self.attributes[edge._source_slot._name]
+                remove_target_name = self.attributes[edge._target_slot._name]
+            elif self.convert:
+                remove_source_name = self.convert(edge._source_slot._name)
+                remove_target_name = self.convert(edge._target_slot._name)
             output_list = self.connections_dict[remove_source_name]
 
             if self.output_template is None:
@@ -730,7 +748,10 @@ class Scene(QtWidgets.QGraphicsScene):
                 source_name = selected[0]._source_slot._name
                 target_name = selected[0]._target_slot._name
 
-                if self.convert:
+                if self.attributes:
+                    source = self.attributes[source_name]
+                    target = self.attributes[target_name]
+                elif self.convert:
                     # converts Translate X to tx
                     source = self.convert(source_name)
                     target = self.convert(target_name)

@@ -112,12 +112,10 @@ class Node(QtWidgets.QGraphicsItem):
         res = set(outputs+inputs)
         return res
 
-
-    def _update(self):
-        """Update slots internal properties
-
-        """
+    def _get_all_slot_heights(self, slots):
         slot_height = self._slot_radius * 2 + self._outline
+        # print("using this height", self._height)
+
         base_y = self._height / 2 + self._label_height / 2 + self._outline / 2
 
         # Update base slot bounding box
@@ -126,22 +124,93 @@ class Node(QtWidgets.QGraphicsItem):
                                         self._slot_radius * 2,
                                         self._slot_radius * 2)
         # Update output
-        init_y = base_y - slot_height * len(self._outputs) / 2
-        # self._output.rect = QtCore.QRectF(self._draw_slot).translated(
-        #     self._width - self._slot_radius, init_y)
-        print("out init y", init_y)
+        init_y = base_y - slot_height * len(slots) / 2
 
-        for i, _input in enumerate(self._outputs):
-            self._outputs[i].rect = QtCore.QRectF(self._draw_slot).translated(
-                self._width - self._slot_radius, init_y + slot_height * i)
+        first = None
+        last = None
+        diff = None
+        for i, _output in enumerate(slots):
+            if i == 0:
+                first = init_y + slot_height * i
+            if i == len(slots)-1:
+                last = init_y + slot_height * i
+
+        if first and last:
+            diff = first - last
+            if diff < 0:
+                diff *= -1
+        else:
+            diff = 0
+
+        return diff
 
 
-        # Update inputs
-        init_y = base_y - slot_height * len(self._inputs) / 2
-        print("in init y", init_y)
-        for i, _input in enumerate(self._inputs):
-            self._inputs[i].rect = QtCore.QRectF(self._draw_slot).translated(
-                -self._slot_radius, init_y + slot_height * i)
+    def _draw_slots(self, slots, output):
+        slot_height = self._slot_radius * 2 + self._outline
+        # print("using this height", self._height)
+        new_height = self._get_all_slot_heights(slots)
+        print("THIS SHOULD BE 650", new_height)
+
+        base_y = new_height / 2 + self._label_height + self._outline
+
+        # Update base slot bounding box
+        self._draw_slot = QtCore.QRectF(0,
+                                        0,
+                                        self._slot_radius * 2,
+                                        self._slot_radius * 2)
+        # Update output
+        init_y = base_y - slot_height * (len(slots)-1) / 2
+        print("inity", init_y)
+
+        first = None
+        last = None
+        diff = None
+        for i, _output in enumerate(slots):
+            if output:
+                if(slots[i]._name == ""):
+                    slots[i].rect = QtCore.QRectF().translated(
+                        self._width - self._slot_radius, init_y + slot_height * i)
+                    init_y -= slot_height * 0.7
+                else:
+                    slots[i].rect = QtCore.QRectF(self._draw_slot).translated(
+                        self._width - self._slot_radius, init_y + slot_height * i)
+            else:
+                if (slots[i]._name == ""):
+                    slots[i].rect = QtCore.QRectF().translated(
+                    -self._slot_radius, init_y + slot_height * i)
+                    init_y -= slot_height * 0.7
+
+                else:
+                    slots[i].rect = QtCore.QRectF(self._draw_slot).translated(
+                    -self._slot_radius, init_y + slot_height * i)
+
+            if i == 0:
+                first = init_y + slot_height * i
+            if i == len(slots)-1:
+                last = init_y + slot_height * i
+
+        if first and last:
+            diff = first - last
+            if diff < 0:
+                diff *= -1
+        else:
+            diff = 0
+
+        return diff
+
+
+    def _update(self):
+        """Update slots internal properties
+
+        """
+
+        output_diff = self._draw_slots(self._outputs, True)
+        input_diff = self._draw_slots(self._inputs, False)
+        diff = max(output_diff, input_diff)
+        print(diff)
+        self._height = diff + self._label_height + self._outline*3
+        print("right height", self._height)
+
 
         # Update bounding box
         self._bbox = QtCore.QRectF(
@@ -188,7 +257,8 @@ class Node(QtWidgets.QGraphicsItem):
         painter.setPen(QtGui.QPen(fill_brush, self._outline))
 
         # Draw primary shape
-        painter.drawRect(0, 0, self._width, self._height)
+        # print("using this height", self._height)
+        painter.drawRect(0, 0, self._width, self._height + self._outline + self._slot_radius * 2)
 
         # Draw label background
         # TODO: Color should be based on node type
@@ -372,7 +442,7 @@ class Node(QtWidgets.QGraphicsItem):
             for anoutput in self._outputs:
                 # need to add anoutput_.rect + label width
                 left_margin = PySide2.QtCore.QMarginsF(self.label_rect_size[0], 0, 0, 0)
-                print(self.label_rect_size)
+                print(anoutput._name, anoutput._rect)
                 start_zone = anoutput._rect + left_margin
                 if start_zone.contains(event.pos()):
                     mouse_pos = self.mapToScene(event.pos())
