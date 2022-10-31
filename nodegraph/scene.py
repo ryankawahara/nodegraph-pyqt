@@ -177,7 +177,6 @@ class Scene(QtWidgets.QGraphicsScene):
                             break
                         for h in eh:
                             # if (eh[h]._source_slot, eh[h]._target_slot) in self.only_allowed_connections:
-
                             if eh[h]._source_slot == slot:
                                 print(h, slot)
                                 connect_to = eh[h]
@@ -634,10 +633,41 @@ class Scene(QtWidgets.QGraphicsScene):
             QtWidgets.QGraphicsScene.mouseMoveEvent(self, event)
             sceneMouse = event.scenePos() + QtCore.QPointF(-150, 0)
             # print("Scene MOUSE", sceneMouse)
-
+            node = None
             # Edge creation mode?
             if self._is_interactive_edge:
+                # node = None
+                slot = None
+
+                for item in self.items(event.scenePos()):
+                    if isinstance(item, Node):
+                        node = item
+                        slot = node._hover_slot
+                        # print(node, slot)
+                        break
+
+                if node:
+                    left_margin = PySide2.QtCore.QMarginsF((node.label_rect_size[0]*2) , 0, 0, 0)
+
+                    right_margin = PySide2.QtCore.QMarginsF(0, 0, node.label_rect_size[0] / 2, 0)
+
+                    his = [i for i in node._inputs if (i._rect + right_margin).contains(sceneMouse)]
+                    hos = [i for i in node._outputs if (i._rect + left_margin).contains(event.scenePos())]
+
+                    print(his, hos)
+                    if hos:
+                        node._update_hover_slot(hos[0])
+                    elif his:
+                        node._update_hover_slot(his[0])
+
+
+                else:
+                    for node in self._nodes:
+                        node._update_hover_slot(False)
+
+
                 self._interactive_edge.refresh(event.scenePos())
+
             # Selection mode?
             elif self._is_rubber_band:
                 # print("408")
@@ -691,8 +721,10 @@ class Scene(QtWidgets.QGraphicsScene):
                     node = item
                     slot = node._hover_slot
                     break
-            connect_to = slot if slot else node
+            connect_to = node
             if not connect_to:
+                for node in self._nodes:
+                    node._update_hover_slot(False)
                 self.stop_interactive_edge()
                 return
 
@@ -700,13 +732,25 @@ class Scene(QtWidgets.QGraphicsScene):
             if hasattr(connect_to,'_inputs'):
                 for input in connect_to._inputs:
                     sceneMouse = event.scenePos() - connect_to.mapToScene(event.pos())
-                    right_margin = PySide2.QtCore.QMarginsF(0, 0, 174, 0)
+                    label_size = connect_to.label_rect_size[0]
+                    right_margin = PySide2.QtCore.QMarginsF(0, 0, label_size, 0)
                     end_zone = input._rect + right_margin
                     if end_zone.contains(sceneMouse):
                         print(input._name, "YAY")
                         target_node = input
+            if hasattr(connect_to,'_outputs'):
+                left_margin = PySide2.QtCore.QMarginsF(connect_to.label_rect_size[0] / 2, 0, 0, 0)
+                for output in connect_to._outputs:
+                    sceneMouse = event.scenePos() - connect_to.mapToScene(event.pos())
+                    label_size = connect_to.label_rect_size[0]
+                    end_zone = output._rect + left_margin
+                    if end_zone.contains(sceneMouse):
+                        print(output._name, "YAY")
+                        target_node = output
             else:
                 print("no inputs")
+                # for node in self._nodes:
+                #     node._update_hover_slot(False)
                 # else:
                 #     print("NO")
             #     print(input.name, input._rect)

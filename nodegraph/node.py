@@ -287,6 +287,8 @@ class Node(QtWidgets.QGraphicsItem):
         # Draw slots
         if lod >= 0.15:
             # Should be driven by slot type
+
+            # move this into the __init__ of the NodeSlot
             hover_color = QtGui.QColor(90, 90, 140)
             hover_normal = self.scene().palette().text()
             self.setAcceptHoverEvents(True)
@@ -392,8 +394,19 @@ class Node(QtWidgets.QGraphicsItem):
 
         """
         # print("NODE %s hover move" % self._name)
-        his = [i for i in self._inputs if i._rect.contains(event.pos())]
-        hos =  [i for i in self._outputs if i._rect.contains(event.pos())]
+
+        left_margin = PySide2.QtCore.QMarginsF(self.label_rect_size[0]/2, 0, 0, 0)
+
+        right_margin = PySide2.QtCore.QMarginsF(0, 0, self.label_rect_size[0]/2, 0)
+
+        # start_zone = anoutput._rect + left_margin
+        # try:
+        #     print("original", self._outputs[0]._rect + left_margin)
+        # except:
+        #     pass
+
+        his = [i for i in self._inputs if (i._rect + right_margin).contains(event.pos())]
+        hos =  [i for i in self._outputs if (i._rect + left_margin).contains(event.pos())]
         # print("Node MOUSE", event.pos())
         if hos:
             # print("output", hos[0]._name)
@@ -439,20 +452,24 @@ class Node(QtWidgets.QGraphicsItem):
             #     self.scene().start_interactive_edge(self._output, mouse_pos)
             #     event.accept()
             #     return
+
+
             for anoutput in self._outputs:
                 # need to add anoutput_.rect + label width
                 left_margin = PySide2.QtCore.QMarginsF(self.label_rect_size[0], 0, 0, 0)
-                print(anoutput._name, anoutput._rect)
                 start_zone = anoutput._rect + left_margin
                 if start_zone.contains(event.pos()):
                     mouse_pos = self.mapToScene(event.pos())
+                    self._update_hover_slot(anoutput)
                     self.scene().start_interactive_edge(anoutput, mouse_pos)
                     self.scene().store_source_node(anoutput)
                     # print(self.scene().source_node._name)
                     event.accept()
                     return
             for aninput in self._inputs:
-                if aninput._rect.contains(event.pos()):
+                right_margin = PySide2.QtCore.QMarginsF(0, 0, self.label_rect_size[0], 0)
+                end_zone = aninput._rect + right_margin
+                if end_zone.contains(event.pos()):
                     mouse_pos = self.mapToScene(event.pos())
                     self.scene().start_interactive_edge(aninput, mouse_pos)
                     event.accept()
@@ -499,6 +516,7 @@ class Node(QtWidgets.QGraphicsItem):
                 return
 
         elif buttons == QtCore.Qt.LeftButton:
+
             if self.scene().is_interactive_edge:
 
                 # Edge creation mode
