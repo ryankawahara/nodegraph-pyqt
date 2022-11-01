@@ -3,7 +3,7 @@ import maya.cmds as cmds
 from unload_packages import *
 unload_packages(silent=False, packages=["nodegraph", "rk_copyAnimation"])
 from rk_copyAnimation import CopyAnimation
-# import os
+import copy
 import sys
 
 # import networkx
@@ -102,10 +102,12 @@ class Input_window(QtWidgets.QWidget):
         self.gridLayout.setObjectName("gridLayout")
         self.set_source = QtWidgets.QPushButton(self)
         self.set_source.setObjectName("set_source")
-        self.gridLayout.addWidget(self.set_source, 0, 0, 1, 1)
+        # self.gridLayout.addWidget(self.set_source, 0, 0, 1, 1)
+        self.gridLayout.addWidget(self.set_source, 1, 0, 1, 1)
         self.set_target = QtWidgets.QPushButton(self)
         self.set_target.setObjectName("set_target")
-        self.gridLayout.addWidget(self.set_target, 0, 1, 1, 1)
+        # self.gridLayout.addWidget(self.set_target, 0, 1, 1, 1)
+        self.gridLayout.addWidget(self.set_target, 1, 1, 1, 1)
 
         self.animation_copier = CopyAnimation()
 
@@ -113,13 +115,22 @@ class Input_window(QtWidgets.QWidget):
 
         self.widget = QtWidgets.QWidget(self)
         self.widget.setObjectName("widget")
-        self.gridLayout.addWidget(self.widget, 2, 0, 1, 2)
+
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.widget.sizePolicy().hasHeightForWidth())
+        self.widget.setSizePolicy(sizePolicy)
+
+        self.gridLayout.addWidget(self.widget, 3, 0, 1, 2)
+        # self.gridLayout.addWidget(self.widget, 2, 0, 1, 2)
         self.window_size = self.widget.size()
         attr_dict_names, attr_dict = self.setup_attributes()
         self.nodegraph = NodeGraphWidget("main", parent=self, output_template=self.output_template, attributes=attr_dict)
-        self.nodegraph.mousePressEvent = lambda event: cmds.select(clear=True)
-        self.gridLayout.addWidget(self.nodegraph, 2, 0, 1, 2)
+        # self.nodegraph.mousePressEvent = lambda event: cmds.select(clear=True)
+        self.gridLayout.addWidget(self.nodegraph, 3, 0, 1, 2)
 
+        self.user_defined_targ_attrs = set()
 
         self.source = self.nodegraph.graph_scene.create_node(
             "Source",
@@ -148,7 +159,7 @@ class Input_window(QtWidgets.QWidget):
 
         self.go_button = QtWidgets.QPushButton(self)
         self.go_button.setObjectName("go_button")
-        self.gridLayout.addWidget(self.go_button, 3, 0, 1, 2)
+        self.gridLayout.addWidget(self.go_button, 4, 0, 1, 2)
 
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
@@ -158,7 +169,18 @@ class Input_window(QtWidgets.QWidget):
         self.invert_checkbox = QtWidgets.QCheckBox(self)
         self.invert_checkbox.setObjectName("invert_checkbox")
         self.horizontalLayout.addWidget(self.invert_checkbox, 0, QtCore.Qt.AlignHCenter)
-        self.gridLayout.addLayout(self.horizontalLayout, 1, 0, 1, 1)
+        # self.gridLayout.addLayout(self.horizontalLayout, 1, 0, 1, 1)
+        self.gridLayout.addLayout(self.horizontalLayout, 2, 0, 1, 1)
+
+        self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
+        self.all_attributes = QtWidgets.QCheckBox(self)
+        self.all_attributes.setObjectName("all_attributes")
+        self.all_attributes.setText("Show All Attributes")
+        self.all_attributes.setToolTip("By default, only attributes shared by the selected objects are shown")
+        self.all_attributes.stateChanged.connect(self.toggle_all_attributes)
+        self.horizontalLayout_2.addWidget(self.all_attributes, 0, QtCore.Qt.AlignHCenter)
+        self.gridLayout.addLayout(self.horizontalLayout_2, 2, 1, 1, 1)
 
         self.set_source.clicked.connect(self.set_source_object)
         self.go_button.clicked.connect(self.execute)
@@ -185,7 +207,8 @@ class Input_window(QtWidgets.QWidget):
         self.invert_checkbox.stateChanged.connect(self.toggle_invert_all)
         self.select_all_checkbox.stateChanged.connect(self.connect_all_slots)
         self.clear_button.clicked.connect(self.delete_all_lines)
-        self.gridLayout.addWidget(self.clear_button, 1, 1, 1, 1)
+        # self.gridLayout.addWidget(self.clear_button, 1, 1, 1, 1)
+        self.gridLayout.addWidget(self.clear_button, 0, 0, 1, 2)
 
         QtCore.QMetaObject.connectSlotsByName(self)
 
@@ -214,6 +237,50 @@ class Input_window(QtWidgets.QWidget):
     #     # print("POS", 150+diff)
     #     # self.nodegraph.graph_view.scale_center_view(resize_scale)
     #     # source.setPos(self.nodegraph.graph_scene.width() - 200, 0)
+
+    def toggle_all_attributes(self):
+
+        prev_connects = []
+
+        # for input in self.target._inputs:
+        #     print(input.name, input.active)
+        for active in self.target.active_inputs:
+            print(active.name, "ACTIVE!")
+            edge = self.nodegraph.graph_scene.get_edge_by_hash(list(active._edge)[0])
+            print(edge.slots[0].name, edge.slots[1].name)
+            print(edge)
+            if edge:
+                prev_connects.append(edge.slots)
+        self.nodegraph.graph_scene.delete_all_edges(self.target.inputs[0])
+        self.update_target_attributes()
+
+
+
+        # does not work if more than 1 is connected. deletes. FIX!!!!
+        for slot_pair in prev_connects:
+            print("PAIR", slot_pair)
+            source = slot_pair[0]
+            target = None
+
+            for slot in self.target._inputs:
+                print("HERE", slot.name, slot_pair[1].name)
+                if slot.name == slot_pair[1].name:
+                    target = slot
+                    print("TARGET", target.name)
+                    break
+
+            if target:
+                print("connect", source.name, "to", target.name)
+                new_edge = self.nodegraph.graph_scene.create_edge(source, target)
+                print("AHA!", self.nodegraph.graph_scene.get_edge_by_hash(new_edge.hash)._target_slot._name)
+
+
+            # new_node = self.nodegraph.graph_scene.get_edge_by_hash(new_edge.hash)._target_slot.parent
+            # print("HERE is the thing", new_node == self.target)
+
+            # self.nodegraph.graph_scene.create_edge(slot_pair[0], slot_pair[1])
+
+        self.update_target_title(self.target_objects)
 
     def setup_attributes(self):
         outputs = [
@@ -269,7 +336,7 @@ class Input_window(QtWidgets.QWidget):
 
     def execute(self):
         invert = self.invert_checkbox.isChecked()
-        print(invert)
+        print("HASHES", self.nodegraph.graph_scene._edges_by_hash)
         # self.animation_copier.clear_target_channels()
         # try:
         print(type(self.target))
@@ -343,6 +410,9 @@ class Input_window(QtWidgets.QWidget):
         self.source.setPos(-200, 0)
 
     def reset_target_node(self):
+        # save connections
+
+
         self.nodegraph.graph_scene.delete_node(self.target)
         attr_dict_names, attr_dict = self.setup_attributes()
 
@@ -356,6 +426,7 @@ class Input_window(QtWidgets.QWidget):
             movable=False,
         )
         self.target.setPos(150, 0)
+        # reconnect
 
 
     def set_source_object(self):
@@ -392,14 +463,18 @@ class Input_window(QtWidgets.QWidget):
             warning.exec()
 
 
-    def set_target_objects(self):
-        self.animation_copier.clear_target()
-        sel = cmds.ls(sl=True)
-        print(sel)
-        shared_targ_attrs = set(cmds.listAttr(sel[0], ud=True))
-        for obj in sel[1:]:
-            shared_targ_attrs.intersection_update(cmds.listAttr(obj, ud=True))
+    def update_target_attributes(self):
+        shared_targ_attrs = set()
+        if len(self.target_objects) > 0:
+            shared_targ_attrs = set(cmds.listAttr(self.target_objects[0], ud=True))
+            if self.all_attributes.isChecked() == False:
+                for obj in self.target_objects[1:]:
+                    shared_targ_attrs.intersection_update(cmds.listAttr(obj, ud=True))
+            else:
+                for obj in self.target_objects[1:]:
+                    shared_targ_attrs.update(cmds.listAttr(obj, ud=True))
 
+        self.user_defined_targ_attrs = shared_targ_attrs
 
         if len(shared_targ_attrs) > 0:
             attr_dict_names = self.add_user_defined_attributes(self.target, list(shared_targ_attrs))
@@ -417,13 +492,72 @@ class Input_window(QtWidgets.QWidget):
         else:
             self.reset_target_node()
 
-        self.target_objects = sel
-        if len(sel) > 1:
+
+
+    def set_target_objects(self):
+        self.animation_copier.clear_target()
+        sel = cmds.ls(sl=True)
+
+        if sel:
+            custom_attr = cmds.listAttr(sel[0], ud=True)
+            if custom_attr:
+                shared_targ_attrs = set(custom_attr)
+
+                if self.all_attributes.isChecked() == False:
+                    for obj in sel[1:]:
+                        shared_targ_attrs.intersection_update(cmds.listAttr(obj, ud=True))
+                else:
+                    for obj in sel[1:]:
+                        shared_targ_attrs.update(cmds.listAttr(obj, ud=True))
+
+
+                if len(shared_targ_attrs) > 0:
+                    attr_dict_names = self.add_user_defined_attributes(self.target, list(shared_targ_attrs))
+
+                    # print("active slots", self.target.active_inputs)
+
+
+
+
+                    self.target = self.nodegraph.graph_scene.create_node(
+                        "Target",
+                        inputs=attr_dict_names,
+                        outputs=[],
+                        width=180,
+                        height=360,
+                        selectable=False,
+                        movable=False,
+                    )
+                    self.target.setPos(150, 0)
+                else:
+                    self.reset_target_node()
+
+                self.target_objects = sel
+                self.update_target_title(self.target_objects)
+                # if len(sel) > 1:
+                #     self.target._update_title(f"{len(self.target_objects)} Objects")
+                #     objs = ''.join(f'{obj}\n' for obj in self.target_objects)
+                #     objs = objs.strip()
+                #     self.target.setToolTip(objs)
+                # elif len(sel) == 1:
+                #     self.target._update_title(self.target_objects[0])
+                #
+                # else:
+                #     self.target._update_title("Target")
+                #     self.reset_target_node()
+                #     warning = QtWidgets.QMessageBox()
+                #     warning.setText("No target items selected")
+                #     warning.setIcon(QtWidgets.QMessageBox.Warning)
+                #     warning.exec()
+
+
+    def update_target_title(self, target_objects):
+        if len(target_objects) > 1:
             self.target._update_title(f"{len(self.target_objects)} Objects")
             objs = ''.join(f'{obj}\n' for obj in self.target_objects)
             objs = objs.strip()
             self.target.setToolTip(objs)
-        elif len(sel) == 1:
+        elif len(target_objects) == 1:
             self.target._update_title(self.target_objects[0])
 
         else:
@@ -433,8 +567,6 @@ class Input_window(QtWidgets.QWidget):
             warning.setText("No target items selected")
             warning.setIcon(QtWidgets.QMessageBox.Warning)
             warning.exec()
-
-
 
 
 
@@ -473,15 +605,15 @@ class NodeGraphWidget(QtWidgets.QWidget):
                                  attributes=self.attributes)
         self.graph_view = View(self.graph_scene, parent=self.parent, is_zoom=False, scale=0.85)
         self.graph_view.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
-        self.graph_view.mousePressedEvent = lambda event: cmds.select(clear=True)
+        # self.graph_view.mousePressedEvent = lambda event: cmds.select(clear=True)
         # find out why it's not scaling!!!!
         self.horizontal_layout = QtWidgets.QHBoxLayout(self)
         self.horizontal_layout.addWidget(self.graph_view)
 
         self.setMouseTracking(True)
 
-    def mousePressEvent(self, event):
-        cmds.select(clear=True)
+    # def mousePressEvent(self, event):
+    #     cmds.select(clear=True)
 
 
 if __name__ == "__main__":

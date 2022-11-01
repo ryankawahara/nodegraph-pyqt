@@ -112,6 +112,18 @@ class Node(QtWidgets.QGraphicsItem):
         res = set(outputs+inputs)
         return res
 
+    def change_node_colors(self, names_to_colors, input):
+        if input:
+            for aninput in self._inputs:
+                if aninput.name in names_to_colors:
+                    aninput.hover_color = names_to_colors[aninput.name]
+        else:
+            for anoutput in self._outputs:
+                if anoutput.name in names_to_colors:
+                    anoutput.hover_color = names_to_colors[anoutput.name]
+
+
+
     def _get_all_slot_heights(self, slots):
         slot_height = self._slot_radius * 2 + self._outline
         # print("using this height", self._height)
@@ -149,7 +161,6 @@ class Node(QtWidgets.QGraphicsItem):
         slot_height = self._slot_radius * 2 + self._outline
         # print("using this height", self._height)
         new_height = self._get_all_slot_heights(slots)
-        print("THIS SHOULD BE 650", new_height)
 
         base_y = new_height / 2 + self._label_height + self._outline
 
@@ -160,7 +171,6 @@ class Node(QtWidgets.QGraphicsItem):
                                         self._slot_radius * 2)
         # Update output
         init_y = base_y - slot_height * (len(slots)-1) / 2
-        print("inity", init_y)
 
         first = None
         last = None
@@ -207,9 +217,7 @@ class Node(QtWidgets.QGraphicsItem):
         output_diff = self._draw_slots(self._outputs, True)
         input_diff = self._draw_slots(self._inputs, False)
         diff = max(output_diff, input_diff)
-        print(diff)
         self._height = diff + self._label_height + self._outline*3
-        print("right height", self._height)
 
 
         # Update bounding box
@@ -304,7 +312,8 @@ class Node(QtWidgets.QGraphicsItem):
 
                 for anoutput in self._outputs:
                     if self._hover_slot == anoutput:
-                        painter.setBrush(hover_color)
+                        # painter.setBrush(hover_color)
+                        painter.setBrush(anoutput.hover_color)
                     else:
                         painter.setBrush(hover_normal)
                     painter.drawEllipse(anoutput.rect)
@@ -441,7 +450,6 @@ class Node(QtWidgets.QGraphicsItem):
         :type event: :class:`QtWidgets.QMouseEvent`
 
         """
-        print("MOUSE PRESS NODE!")
 
         buttons = event.buttons()
         # modifiers = event.modifiers()
@@ -555,7 +563,7 @@ class NodeSlot(object):
     INPUT = 0
     OUTPUT = 1
 
-    def __init__(self, name, parent, family=None):
+    def __init__(self, name, parent, family=None, hover_color=QtGui.QColor(90, 90, 140)):
         """Instance this class
 
         """
@@ -565,6 +573,7 @@ class NodeSlot(object):
         self._family = family or self.INPUT
         self._rect = None
         self._edge = set()
+        self._hover_color = hover_color
 
     @property
     def active(self):
@@ -643,3 +652,11 @@ class NodeSlot(object):
 
         """
         self._edge -= set(value if isinstance(value, list) else [value])
+    @property
+    def hover_color(self):
+        return self._hover_color
+
+    @hover_color.setter
+    def hover_color(self, color):
+        self._hover_color = color
+

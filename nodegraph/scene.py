@@ -128,6 +128,7 @@ class Scene(QtWidgets.QGraphicsScene):
         edge = Edge(source, target, self, arrow=Edge.ARROW_STANDARD)
         print(edge.hash, edge)
         self._edges_by_hash[edge.hash] = edge
+        self.connections_dict = self.get_connections(target)
         return edge
 
     def remove_edge(self, edge):
@@ -647,7 +648,7 @@ class Scene(QtWidgets.QGraphicsScene):
                         break
 
                 if node:
-                    left_margin = PySide2.QtCore.QMarginsF((node.label_rect_size[0]*2) , 0, 0, 0)
+                    left_margin = PySide2.QtCore.QMarginsF((node.label_rect_size[0]*1.7) , 0, 0, 0)
 
                     right_margin = PySide2.QtCore.QMarginsF(0, 0, node.label_rect_size[0] / 2, 0)
 
@@ -659,6 +660,8 @@ class Scene(QtWidgets.QGraphicsScene):
                         node._update_hover_slot(hos[0])
                     elif his:
                         node._update_hover_slot(his[0])
+                    else:
+                        node._update_hover_slot(False)
 
 
                 else:
