@@ -17,24 +17,27 @@ class ConnectionCollection:
         print("hello there")
 
     def add(self, source_channel, target_channel, invert):
+        newObj = ConnectionItem(target_channel, invert)
         if source_channel in self.connection_dict:
             # if target_channel not in self.connection_dict[source_channel]:
             if not self.contains(target_channel, source_channel):
-                self.connection_dict[source_channel].append(ConnectionItem(target_channel, invert))
+                self.connection_dict[source_channel].append(newObj)
         else:
-            self.connection_dict[source_channel] = [ConnectionItem(target_channel, invert)]
+            self.connection_dict[source_channel] = [newObj]
+
+        return newObj
 
     def remove(self, remove_source_name, remove_target_name):
         if remove_source_name in self.connection_dict:
             output_list = self.connection_dict[remove_source_name]
-            for item in output_list:
-                print(str(item))
+            # for item in output_list:
+            #     print(str(item))
             if len(output_list) < 2:
                 self.connection_dict.pop(remove_source_name)
             else:
-                print(remove_target_name)
+                # print(remove_target_name)
                 index = self.search_item_by_name(remove_target_name, output_list)   
-                print(index)
+                # print(index)
 
                 del output_list[index]
                 # output_list.remove(index)
@@ -44,16 +47,16 @@ class ConnectionCollection:
 
     def contains(self, search, source_channel):
         for val in self.connection_dict[source_channel]:
-            print(search, val, search in val)
+            # print(search, val, search in val)
             if search in val:
                 return True
-            print('not found')
+            # print('not found')
         return False
 
     def search_item_by_name(self, target_channel, output_list):
-        print("searching for", target_channel)
-        for item in output_list:
-            print("checking", str(item))
+        # print("searching for", target_channel)
+        # for item in output_list:
+        #     print("checking", str(item))
         for item in output_list:
             if item.target_channel == target_channel:
                 return output_list.index(item)
@@ -62,9 +65,9 @@ class ConnectionCollection:
     def toggle_invert(self, source_channel, target_channel):
         item_list = self.connection_dict[source_channel]
         index = self.search_item_by_name(target_channel, item_list)
-        print('before',item_list[index].invert )
+        # print('before',item_list[index].invert )
         item_list[index].invert = not item_list[index].invert
-        print('after', item_list[index].invert)
+        # print('after', item_list[index].invert)
 
     def set_invert(self, source_channel, target_channel, invert):
         item_list = self.connection_dict[source_channel]
@@ -81,9 +84,7 @@ class ConnectionItem:
         return f"{self.target_channel} {self.invert}"
 
     def __contains__(self, val):
-        print("CONTAINS", val == self.target_channel, type(val), type(self.target_channel))
         if val == self.target_channel:
-            print("contains")
             return True
         return False
 
@@ -97,7 +98,8 @@ class Input_window(QtWidgets.QWidget):
         self.output_template = output_template
         self.setObjectName("Copy Animation")
         self.resize(500, 450)
-        self.setMinimumSize(400,350)
+        self.setMinimumSize(500,350)
+        self.setMaximumWidth(500)
         self.gridLayout = QtWidgets.QGridLayout(self)
         self.gridLayout.setObjectName("gridLayout")
         self.set_source = QtWidgets.QPushButton(self)
@@ -142,7 +144,6 @@ class Input_window(QtWidgets.QWidget):
             movable=False,
         )
         self.source.setPos(-200, 0)
-        print("WIDTH", self.nodegraph.graph_scene.width())
         # self.source.setPos(self.nodegraph.graph_scene.width(), 0)
 
         self.target = self.nodegraph.graph_scene.create_node(
@@ -178,7 +179,7 @@ class Input_window(QtWidgets.QWidget):
         self.all_attributes.setObjectName("all_attributes")
         self.all_attributes.setText("Show All Attributes")
         self.all_attributes.setToolTip("By default, only attributes shared by the selected objects are shown")
-        self.all_attributes.stateChanged.connect(self.toggle_all_attributes)
+        self.all_attributes.clicked.connect(self.toggle_all_attributes)
         self.horizontalLayout_2.addWidget(self.all_attributes, 0, QtCore.Qt.AlignHCenter)
         self.gridLayout.addLayout(self.horizontalLayout_2, 2, 1, 1, 1)
 
@@ -191,7 +192,7 @@ class Input_window(QtWidgets.QWidget):
         self.set_target.setText("Set Target")
         self.go_button.setText("Zhu Li! Do the thing!")
         self.invert_checkbox.setText("Invert All")
-        self.select_all_checkbox.setText("Select All")
+        self.select_all_checkbox.setText("Connect All")
 
         self.clear_button = QtWidgets.QPushButton(self)
         font = QtGui.QFont()
@@ -205,7 +206,7 @@ class Input_window(QtWidgets.QWidget):
         self.clear_button.setText("Clear")
 
         self.invert_checkbox.stateChanged.connect(self.toggle_invert_all)
-        self.select_all_checkbox.stateChanged.connect(self.connect_all_slots)
+        self.select_all_checkbox.clicked.connect(self.connect_all_slots)
         self.clear_button.clicked.connect(self.delete_all_lines)
         # self.gridLayout.addWidget(self.clear_button, 1, 1, 1, 1)
         self.gridLayout.addWidget(self.clear_button, 0, 0, 1, 2)
@@ -242,13 +243,8 @@ class Input_window(QtWidgets.QWidget):
 
         prev_connects = []
 
-        # for input in self.target._inputs:
-        #     print(input.name, input.active)
         for active in self.target.active_inputs:
-            print(active.name, "ACTIVE!")
             edge = self.nodegraph.graph_scene.get_edge_by_hash(list(active._edge)[0])
-            print(edge.slots[0].name, edge.slots[1].name)
-            print(edge)
             if edge:
                 prev_connects.append(edge.slots)
         self.nodegraph.graph_scene.delete_all_edges(self.target.inputs[0])
@@ -258,29 +254,23 @@ class Input_window(QtWidgets.QWidget):
 
         # does not work if more than 1 is connected. deletes. FIX!!!!
         for slot_pair in prev_connects:
-            print("PAIR", slot_pair)
             source = slot_pair[0]
             target = None
 
             for slot in self.target._inputs:
-                print("HERE", slot.name, slot_pair[1].name)
                 if slot.name == slot_pair[1].name:
                     target = slot
-                    print("TARGET", target.name)
                     break
 
             if target:
-                print("connect", source.name, "to", target.name)
                 new_edge = self.nodegraph.graph_scene.create_edge(source, target)
-                print("AHA!", self.nodegraph.graph_scene.get_edge_by_hash(new_edge.hash)._target_slot._name)
-
-
-            # new_node = self.nodegraph.graph_scene.get_edge_by_hash(new_edge.hash)._target_slot.parent
-            # print("HERE is the thing", new_node == self.target)
-
-            # self.nodegraph.graph_scene.create_edge(slot_pair[0], slot_pair[1])
 
         self.update_target_title(self.target_objects)
+
+    def keyPressEvent(self, event):
+        if event.key() in [QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
+            print("goodbye")
+            self.select_all_checkbox.setChecked(False)
 
     def setup_attributes(self):
         outputs = [
@@ -332,22 +322,19 @@ class Input_window(QtWidgets.QWidget):
 
     def toggle_invert_all(self):
         invert_or_deinvert =  self.invert_checkbox.isChecked()
+        self.nodegraph.graph_scene.invert_new_edges = invert_or_deinvert
         self.nodegraph.graph_scene.toggle_invert_all_edges(self.target._inputs[0], invert_or_deinvert)
 
     def execute(self):
         invert = self.invert_checkbox.isChecked()
-        print("HASHES", self.nodegraph.graph_scene._edges_by_hash)
         # self.animation_copier.clear_target_channels()
         # try:
-        print(type(self.target))
         channel_dict = self.nodegraph.graph_scene.connections_dict
-        print(self.nodegraph.graph_scene.connections_dict)
         res = ""
         for key, val in self.nodegraph.graph_scene.connections_dict.items():
 
             res += f"|{key}|"
             for v in val:
-                print("indiv val", type(v))
                 res += f"[{v}]"
             res += ", "
         print(res)
@@ -463,6 +450,7 @@ class Input_window(QtWidgets.QWidget):
             warning.exec()
 
 
+
     def update_target_attributes(self):
         shared_targ_attrs = set()
         if len(self.target_objects) > 0:
@@ -495,6 +483,7 @@ class Input_window(QtWidgets.QWidget):
 
 
     def set_target_objects(self):
+        print('hi')
         self.animation_copier.clear_target()
         sel = cmds.ls(sl=True)
 
@@ -510,14 +499,8 @@ class Input_window(QtWidgets.QWidget):
                     for obj in sel[1:]:
                         shared_targ_attrs.update(cmds.listAttr(obj, ud=True))
 
-
                 if len(shared_targ_attrs) > 0:
                     attr_dict_names = self.add_user_defined_attributes(self.target, list(shared_targ_attrs))
-
-                    # print("active slots", self.target.active_inputs)
-
-
-
 
                     self.target = self.nodegraph.graph_scene.create_node(
                         "Target",
@@ -529,7 +512,12 @@ class Input_window(QtWidgets.QWidget):
                         movable=False,
                     )
                     self.target.setPos(150, 0)
+                    # self.target._height
+                    print("DIFF", self.target.full_height - self.target._height)
+                    self.resize(self.width(), self.height()+self.target.full_height)
+                    print("no")
                 else:
+                    print("ohhhh this should gos")
                     self.reset_target_node()
 
                 self.target_objects = sel
@@ -549,6 +537,10 @@ class Input_window(QtWidgets.QWidget):
                 #     warning.setText("No target items selected")
                 #     warning.setIcon(QtWidgets.QMessageBox.Warning)
                 #     warning.exec()
+            else:
+                self.reset_target_node()
+                self.target_objects = sel
+                self.update_target_title(self.target_objects)
 
 
     def update_target_title(self, target_objects):
@@ -563,6 +555,7 @@ class Input_window(QtWidgets.QWidget):
         else:
             self.target._update_title("Target")
             self.reset_target_node()
+            self.all_attributes.setChecked(False)
             warning = QtWidgets.QMessageBox()
             warning.setText("No target items selected")
             warning.setIcon(QtWidgets.QMessageBox.Warning)

@@ -102,6 +102,15 @@ class Node(QtWidgets.QGraphicsItem):
         return [inp.name for inp in self._inputs if inp.active == True]
 
     @property
+    def full_height(self):
+        nodes = max(len(self._outputs), len(self._inputs))
+        print("nodes", nodes)
+        slot_height = self._slot_radius * 2 + self._outline
+
+
+        return (nodes-14)*slot_height
+
+    @property
     def edges(self):
         """Return all hashes of connected edges
 

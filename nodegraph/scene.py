@@ -38,6 +38,8 @@ class Scene(QtWidgets.QGraphicsScene):
         self.output_template = output_template
         self.attributes = attributes
 
+        self.invert_new_edges = False
+
         # if a class is passed in, initialize an instance
         # if self.output_template:
         #     self.output_template = self.output_template()
@@ -126,7 +128,8 @@ class Scene(QtWidgets.QGraphicsScene):
 
         """
         edge = Edge(source, target, self, arrow=Edge.ARROW_STANDARD)
-        print(edge.hash, edge)
+        if self.invert_new_edges:
+            edge.double_click = True
         self._edges_by_hash[edge.hash] = edge
         self.connections_dict = self.get_connections(target)
         return edge
@@ -135,7 +138,6 @@ class Scene(QtWidgets.QGraphicsScene):
         del self._edges_by_hash[edge.hash]
 
     def add_exclusive_connection(self, source, target):
-        print(source, target, "EXCLUSIVE")
         self.only_allowed_connections.append((source,target))
 
     def start_interactive_edge(self, source_slot, mouse_pos):
@@ -143,6 +145,7 @@ class Scene(QtWidgets.QGraphicsScene):
 
         """
         self._is_interactive_edge = True
+
         if not self._interactive_edge:
             # Create interactive edge
             self._interactive_edge = InteractiveEdge(
@@ -150,6 +153,10 @@ class Scene(QtWidgets.QGraphicsScene):
                 mouse_pos,
                 scene=self,
                 arrow=Edge.ARROW_STANDARD)
+
+            # INVERT HERE
+            if self.invert_new_edges:
+                self._interactive_edge.double_click = True
         else:
             # Re-use existing interactive edge
             self._interactive_edge.refresh(mouse_pos, source_slot)
@@ -159,6 +166,7 @@ class Scene(QtWidgets.QGraphicsScene):
         and the slot given by connect_to
 
         """
+
         self._is_interactive_edge = False
         if connect_to:
             eh = self._edges_by_hash  # shortcut
@@ -177,9 +185,7 @@ class Scene(QtWidgets.QGraphicsScene):
                             found = True
                             break
                         for h in eh:
-                            # if (eh[h]._source_slot, eh[h]._target_slot) in self.only_allowed_connections:
                             if eh[h]._source_slot == slot:
-                                print(h, slot)
                                 connect_to = eh[h]
                 else:
                     connect_to = connect_to._outputs[0]
@@ -200,18 +206,15 @@ class Scene(QtWidgets.QGraphicsScene):
                     not [h for h in eh if eh[h]._target_slot == source]):
 
                 if source.family == NodeSlot.OUTPUT:
-                    print(NodeSlot.OUTPUT, source.parent._inputs)
                     for aninput in source.parent._inputs:
                         pass
                 else:
                     for anoutput in source.parent._outputs:
-                        # output = anoutput
                         pass
 
                 escape = False
-                for slot in self.only_allowed_connections:
-                    print(slot, source._name, target._name)
 
+                for slot in self.only_allowed_connections:
                     if (source._name, target._name) == slot:
                         escape = False
                         self.delete_all_edges(source)
@@ -222,75 +225,46 @@ class Scene(QtWidgets.QGraphicsScene):
                 if not escape:
                     active_edge_connections = []
                     edge = self.create_edge(target, source)
-                    print("ACTIVE")
-                    # active_slots = [inp for inp in source.parent._inputs if inp.active == True]
+                    # if self.invert_new_edges:
+                    #     edge.double_click = True
                     active_slots = source.parent.active_inputs
-                    print(active_slots)
-
 
                     for slots in active_slots:
-                        print(slots.edge)
                         for edge in slots.edge:
                             edge_obj = self.get_edge_by_hash(edge)
                             if edge_obj:
+
+                                # if self.invert_new_edges:
+                                #     edge_obj.double_click = True
+
+
                                 edge_nodes = edge_obj.slots
                                 edge_node_names = (edge_nodes[0].name, edge_nodes[1].name)
                                 active_edge_connections.append(edge_nodes)
 
-
                     for connection in active_edge_connections:
-                        print("CONNECTIONS!!!")
-                        print(connection[0].name, connection[1].name)
                         for pair in self.only_allowed_connections:
                             if connection[0].name in pair or connection[1].name in pair:
-                                print(pair == (connection[0].name, connection[1].name))
                                 if len(active_edge_connections) > 1: # IF IT IS THE ONLY CONNECTION, LEAVE IT BE. OTHERWISE DELETE!
-                                    print("correctomundo!")
-                                    print(type(connection[1]))
-                                    print(connection[1].edge)
                                     edge_to_delete = self.get_edge_by_hash(connection[1].edge[0])
                                     res = edge_to_delete.slots
-                                    print(res[0].name, res[1].name)
                                     self.delete_edges([edge_to_delete])
 
-                                # for couple in self.only_allowed_connections:
-                                #     print(edge_node_names, couple)
-                                #     if edge_node_names[0] in couple or edge_node_names[1] in couple:
-                                #         if edge_node_names != couple:
-                                #             self.delete_edges([edge_obj])
-                                #             print("CORRECT!")
-
-
-
-                                # print(edge_node_names, self.only_allowed_connections)
-                    #     for slot in slots:
-                    #         print(slot.edge, slot.edge.name)
-
-                    # for connection in self.only_allowed_connections:
-                    #     print("235")
-                    #     print(connection, self.only_allowed_connections, active_slots)
-                    #     edges_list = self.get_all_edges(source)
-                    #     print(connection.edge)
-                    #     # if connection[0] in active_slots or connection[1] in active_slots:
-                    #     #     print("delete all connection")
-                    #         # self.delete_all_edges(source)
-
-                    # print(source.parent._inputs)
-
-                    # is all > all active?
             else:
-                # runs if there is already a connection in the target node
                 source_hashes = list(source._edge)
-                # source_slot_name = self._edges_by_hash[list(source.parent.edges)[0]]._source_slot._name
                 if self.multiple_input_allowed:
                     edge = self.create_edge(target, source)
+                    if self.invert_new_edges:
+                        edge.double_click = True
 
-        # Delete item (to be sure it's not taken into account by any function
+            # Delete item (to be sure it's not taken into account by any function
         # including but not limited to fitInView)
+
+
+            # why is this not working?????
+            # print("run 2")
             self.connections_dict = self.get_connections(target)
 
-
-        print("delete line!")
         self.removeItem(self._interactive_edge)
         self._interactive_edge = None
 
@@ -377,7 +351,6 @@ class Scene(QtWidgets.QGraphicsScene):
     def get_connections(self, target_node):
         connection_dict = {}
         hash_list = [hash for hash in target_node.parent.edges if hash in self._edges_by_hash]
-        print("hash list", hash_list)
         if self.output_template is None:
             for node_hash in hash_list:
 
@@ -411,7 +384,7 @@ class Scene(QtWidgets.QGraphicsScene):
                 invert_source = self._edges_by_hash[node_hash].double_click
 
                 target_name = self._edges_by_hash[node_hash]._target_slot._name
-                print(source_name, target_name, invert_source)
+
 
                 if self.attributes:
                     source = self.attributes[source_name]
@@ -425,17 +398,15 @@ class Scene(QtWidgets.QGraphicsScene):
                     source = source_name
                     target = target_name
 
-                self.output_template.add(source, target, invert_source)
+                newObj = self.output_template.add(source, target, invert_source)
+                # print("INVERT", newObj.invert)
+                #
+                # print(self.output_template.connection_dict)
+                # for key, item in self.output_template.connection_dict.items():
+                #     print(key, item[0].invert)
 
 
             connection_dict = self.output_template.connection_dict
-
-                # if source in connection_dict:
-                #     if target not in connection_dict[source]:
-                #         connection_dict[source].append(target)
-                #
-                # else:
-                #     connection_dict[source] = [target]
 
 
         return connection_dict
@@ -500,10 +471,8 @@ class Scene(QtWidgets.QGraphicsScene):
                     else:
                         output_list.remove(remove_target_name)
                 else:
-                    print("not found")
                     continue
             else:
-                print("remove", remove_source_name, remove_target_name)
                 self.output_template.remove(remove_source_name, remove_target_name)
 
 
@@ -529,8 +498,6 @@ class Scene(QtWidgets.QGraphicsScene):
             if isinstance(i, Edge):
                 edges.append(i)
 
-        print("Node(s) to delete: %s" % [n._name for n in nodes])
-        print("Edge(s) to delete: %r" % edges)
         for node in nodes:
             # TODO: Collect all edges for deletion or reconnection
 
@@ -571,7 +538,6 @@ class Scene(QtWidgets.QGraphicsScene):
         :type event: :class:`QtWidgets.QMouseEvent`
 
         """
-        print("MOUSE PRESS SCENE!")
         if not self._is_interactive_edge:
 
             if not self.items(event.scenePos()):
@@ -655,7 +621,6 @@ class Scene(QtWidgets.QGraphicsScene):
                     his = [i for i in node._inputs if (i._rect + right_margin).contains(sceneMouse)]
                     hos = [i for i in node._outputs if (i._rect + left_margin).contains(event.scenePos())]
 
-                    print(his, hos)
                     if hos:
                         node._update_hover_slot(hos[0])
                     elif his:
@@ -673,13 +638,11 @@ class Scene(QtWidgets.QGraphicsScene):
 
             # Selection mode?
             elif self._is_rubber_band:
-                # print("408")
                 self._rubber_band.refresh(event.scenePos())
             elif self.selectedItems():
                 if not self._is_refresh_edges:
                     self._is_refresh_edges = True
                     self._refresh_edges = self._get_refresh_edges()
-                print("edge", self._refresh_edges)
                 for ahash in self._refresh_edges["move"]:
                     if ahash in self._edges_by_hash:
                         self._edges_by_hash[ahash].refresh_position()
@@ -739,7 +702,6 @@ class Scene(QtWidgets.QGraphicsScene):
                     right_margin = PySide2.QtCore.QMarginsF(0, 0, label_size, 0)
                     end_zone = input._rect + right_margin
                     if end_zone.contains(sceneMouse):
-                        print(input._name, "YAY")
                         target_node = input
             if hasattr(connect_to,'_outputs'):
                 left_margin = PySide2.QtCore.QMarginsF(connect_to.label_rect_size[0] / 2, 0, 0, 0)
@@ -748,10 +710,9 @@ class Scene(QtWidgets.QGraphicsScene):
                     label_size = connect_to.label_rect_size[0]
                     end_zone = output._rect + left_margin
                     if end_zone.contains(sceneMouse):
-                        print(output._name, "YAY")
                         target_node = output
             else:
-                print("no inputs")
+                pass
                 # for node in self._nodes:
                 #     node._update_hover_slot(False)
                 # else:
@@ -788,8 +749,6 @@ class Scene(QtWidgets.QGraphicsScene):
         selected = self.items(event.scenePos())
 
         if len(selected) == 1:
-            print(type(selected[0]))
-
             selected[0].set_double_click(not selected[0].double_click)
             if self.output_template:
                 source_name = selected[0]._source_slot._name
@@ -806,7 +765,7 @@ class Scene(QtWidgets.QGraphicsScene):
                 self.output_template.toggle_invert(source, target)
 
 
-            print(self.get_connections(selected[0]._target_slot))
+            # print(self.get_connections(selected[0]._target_slot))
             # print("Edit Node %s" % selected[0]._name)
 
     def _onSelectionChanged(self):

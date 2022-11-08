@@ -118,6 +118,7 @@ class View(QtWidgets.QGraphicsView):
         # Add a bit of padding
         scene_rect.adjust(-padding, -padding, padding, padding)
 
+
         # Compare ratio, find resulting scale
         # view_ratio = float(self.size().width()) / float(self.size().height())
         # fit_ratio = scene_rect.width() / scene_rect.height()
@@ -144,10 +145,16 @@ class View(QtWidgets.QGraphicsView):
             self._scale = new_scale
             print("Fit en view")
 
-            self.fitInView(scene_rect, QtCore.Qt.KeepAspectRatio)
+            # self.fitInView(scene_rect, QtCore.Qt.KeepAspectRatio)
         else:
             self.scale_view(self._scale)
+            print(scene_rect.center() + QtCore.QPointF(0, 50))
+            # self.centerOn(scene_rect.center() + QtCore.QPointF(0, 50))
             self.centerOn(scene_rect.center())
+            self.setResizeAnchor(QtWidgets.QGraphicsView.NoAnchor)
+
+            # PySide2.QtCore.QPointF(65.000000, 154.700000)
+            # self.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
 
     # def scale_center_view(self, scale_factor, selected=False, padding=50):
     #     """Set view transform in order to fit all/selected nodes in scene.
