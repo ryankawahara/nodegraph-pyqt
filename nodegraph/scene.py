@@ -151,11 +151,9 @@ class Scene(QtWidgets.QGraphicsScene):
         """Create an edge between source slot and mouse position
 
         """
-        # print("creating edge")
         self._is_interactive_edge = True
 
         if not self._interactive_edge:
-            # print("making", source_slot)
             # Create interactive edge
             self._interactive_edge = InteractiveEdge(
                 source_slot,
@@ -163,7 +161,6 @@ class Scene(QtWidgets.QGraphicsScene):
                 scene=self,
                 arrow=Edge.ARROW_STANDARD)
 
-            # INVERT HERE
             if self.invert_new_edges:
                 self._interactive_edge.double_click = True
         else:
@@ -175,6 +172,8 @@ class Scene(QtWidgets.QGraphicsScene):
         and the slot given by connect_to
 
         """
+        if self.draw_line == True:
+            self.draw_line = False
 
         self._is_interactive_edge = False
         if connect_to:
@@ -207,32 +206,17 @@ class Scene(QtWidgets.QGraphicsScene):
                 source = connect_to
                 target = self._interactive_edge._source_slot
 
-            # Validate the connection
-            print(target, found, [h for h in eh if eh[h]._target_slot == source])
-
-            # if (found and
-            #         source.family != target.family and
-            #         source.parent != target.parent and
-            #         not [h for h in eh if eh[h]._target_slot == source]):
-
             existing_connects = [h for h in eh if eh[h]._target_slot == source]
 
             if (found and
                     source.family != target.family and
                     source.parent != target.parent):
 
+                # overwrite existing connection
                 if existing_connects:
-                    print(f"delete {existing_connects[0]}")
                     edge_to_delete = self.get_edge_by_hash(existing_connects[0])
                     self.delete_edges([edge_to_delete])
 
-
-                if source.family == NodeSlot.OUTPUT:
-                    for aninput in source.parent._inputs:
-                        pass
-                else:
-                    for anoutput in source.parent._outputs:
-                        pass
 
                 escape = False
 
@@ -278,12 +262,6 @@ class Scene(QtWidgets.QGraphicsScene):
                     if self.invert_new_edges:
                         edge.double_click = True
 
-            # Delete item (to be sure it's not taken into account by any function
-        # including but not limited to fitInView)
-
-
-            # why is this not working?????
-            # print("run 2")
             self.connections_dict = self.get_connections(target)
 
         self.removeItem(self._interactive_edge)
@@ -360,7 +338,10 @@ class Scene(QtWidgets.QGraphicsScene):
                 ind = 0
                 while ind < len(source_node.outputs)-1:
                     if source_node.outputs[ind]._name != "":
-                        self.create_edge(source_node.outputs[ind], target_node.inputs[ind])
+                        try:
+                            self.create_edge(source_node.outputs[ind], target_node.inputs[ind])
+                        except IndexError:
+                            pass
                     ind +=1
         else:
             self.delete_all_edges(target_node.inputs[0])
@@ -543,9 +524,10 @@ class Scene(QtWidgets.QGraphicsScene):
                 self.output_template.remove(remove_source_name, remove_target_name)
 
 
-            # if self.connections_dict[self.convert(edge._source_slot)._name]
-            # self.connections_dict.pop(self.convert(edge._source_slot._name))
-            # print(edge._source_slot._name, edge._target_slot._name)
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_Escape:
+            self.stop_interactive_edge()
+
 
     def mousePressEvent(self, event):
         """Re-implements mouse press event
@@ -554,10 +536,7 @@ class Scene(QtWidgets.QGraphicsScene):
         :type event: :class:`QtWidgets.QMouseEvent`
 
         """
-        # if not self.items(event.scenePos()):
-        #     print("no node", self.draw_line, self._is_interactive_edge)
-        #
-        #     self.draw_line = False
+
         if not self._is_interactive_edge:
 
             if not self.items(event.scenePos()):
@@ -607,44 +586,22 @@ class Scene(QtWidgets.QGraphicsScene):
         """
         buttons = event.buttons()
         if self.clicked_node:
-            # print(self.clicked_node)
             self.clicked_node.mouseMoveEvent(event, False)
 
-
-
-
-        # THIS SECTION IS FOR CLICK AND CLICK.
-
-
-
-        # if self.source_node:
-        #     # print(self.source_node._name)
-        #     QtWidgets.QGraphicsScene.mouseMoveEvent(self, event)
-        #     sceneMouse = event.scenePos() + QtCore.QPointF(-150, 0)
-        #
-        #     if self._is_interactive_edge:
-        #         self._interactive_edge.refresh(event.scenePos())
-        # el
         test = True
         if buttons == QtCore.Qt.LeftButton or test == True:
-            # for item in self.items(event.scenePos()):
-            #     print(item._name, type(item))
-
 
             QtWidgets.QGraphicsScene.mouseMoveEvent(self, event)
             sceneMouse = event.scenePos() + QtCore.QPointF(-150, 0)
-            # print("Scene MOUSE", sceneMouse)
             node = None
             # Edge creation mode?
             if self._is_interactive_edge:
-                # node = None
                 slot = None
 
                 for item in self.items(event.scenePos()):
                     if isinstance(item, Node):
                         node = item
                         slot = node._hover_slot
-                        # print(node, slot)
                         break
 
                 if node:
@@ -686,7 +643,6 @@ class Scene(QtWidgets.QGraphicsScene):
         elif buttons == QtCore.Qt.RightButton:
             QtWidgets.QGraphicsScene.mouseMoveEvent(self, event)
             sceneMouse = event.scenePos() + QtCore.QPointF(-150, 0)
-            # print("Scene MOUSE", sceneMouse)
 
             # Edge creation mode?
             if self._is_interactive_edge:
@@ -757,21 +713,16 @@ class Scene(QtWidgets.QGraphicsScene):
             if self.drag_to_connect:
                 if self.draw_line == True:
                     self.stop_interactive_edge(connect_to=target_node)
-                    if self.draw_line == True:
-                        self.draw_line = False
+
 
             else:
 
                 if release_mode and selected[0] != self._interactive_edge._source_slot.parent:
-                    # print(selected[0].name)
-                    # print("WHO", selected[0] == target_node.parent)
                     self.stop_interactive_edge(connect_to=target_node)
-                    if self.draw_line == True:
-                        self.draw_line = False
+
                 elif self.draw_line == False:
                     self.stop_interactive_edge(connect_to=target_node)
-                    if self.draw_line == True:
-                        self.draw_line = False
+
 
         # Edge refresh mode?
         if self._is_refresh_edges:
@@ -814,15 +765,8 @@ class Scene(QtWidgets.QGraphicsScene):
                     self.mouseReleaseEvent(event)
                 else:
                     self.clicked_node = selected[0]
-                    # node.mouseDoubleClickEvent(event)
-                    dummy = 1
-                    print("event position", event.pos(), event.scenePos())
-
                     self.clicked_node.mousePressEvent(event, False)
 
-
-            # print(self.get_connections(selected[0]._target_slot))
-            # print("Edit Node %s" % selected[0]._name)
 
     def _onSelectionChanged(self):
         """Re-inplements selection changed event
@@ -854,7 +798,6 @@ class Scene(QtWidgets.QGraphicsScene):
                 edges_to_refresh.append(edge)
 
         r = {"move": edges_to_move, "refresh": edges_to_refresh}
-        # print("move: %r\nrefresh: %r" % (edges_to_move, edges_to_refresh))
         return r
 
     def toggle_connection_clicked(self):
