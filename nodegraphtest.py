@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import maya.cmds as cmds
 from unload_packages import *
+
 unload_packages(silent=False, packages=["nodegraph", "rk_copyAnimation"])
 from rk_copyAnimation import CopyAnimation
 import copy
@@ -10,6 +11,8 @@ import sys
 from Qt import QtWidgets, QtGui, QtCore
 from nodegraph.scene import Scene
 from nodegraph.view import View
+
+WIDTH = 220
 
 class ConnectionCollection:
     def __init__(self):
@@ -36,7 +39,7 @@ class ConnectionCollection:
                 self.connection_dict.pop(remove_source_name)
             else:
                 # print(remove_target_name)
-                index = self.search_item_by_name(remove_target_name, output_list)   
+                index = self.search_item_by_name(remove_target_name, output_list)
                 # print(index)
 
                 del output_list[index]
@@ -93,12 +96,10 @@ class Input_window(QtWidgets.QWidget):
     def __init__(self, output_template=None):
         super(Input_window, self).__init__(parent=None)
 
-
-
         self.output_template = output_template
         self.setObjectName("Copy Animation")
         self.resize(500, 450)
-        self.setMinimumSize(500,350)
+        self.setMinimumSize(500, 350)
         self.setMaximumWidth(500)
         self.gridLayout = QtWidgets.QGridLayout(self)
         self.gridLayout.setObjectName("gridLayout")
@@ -128,7 +129,8 @@ class Input_window(QtWidgets.QWidget):
         # self.gridLayout.addWidget(self.widget, 2, 0, 1, 2)
         self.window_size = self.widget.size()
         attr_dict_names, attr_dict = self.setup_attributes()
-        self.nodegraph = NodeGraphWidget("main", parent=self, output_template=self.output_template, attributes=attr_dict)
+        self.nodegraph = NodeGraphWidget("main", parent=self, output_template=self.output_template,
+                                         attributes=attr_dict)
         # self.nodegraph.mousePressEvent = lambda event: cmds.select(clear=True)
         self.gridLayout.addWidget(self.nodegraph, 3, 0, 1, 2)
 
@@ -138,7 +140,7 @@ class Input_window(QtWidgets.QWidget):
             "Source",
             inputs=[],
             outputs=attr_dict_names,
-            width=180,
+            width=WIDTH,
             height=360,
             selectable=False,
             movable=False,
@@ -150,7 +152,7 @@ class Input_window(QtWidgets.QWidget):
             "Target",
             inputs=attr_dict_names,
             outputs=[],
-            width=180,
+            width=WIDTH,
             height=360,
             selectable=False,
             movable=False,
@@ -250,8 +252,6 @@ class Input_window(QtWidgets.QWidget):
         self.nodegraph.graph_scene.delete_all_edges(self.target.inputs[0])
         self.update_target_attributes()
 
-
-
         # does not work if more than 1 is connected. deletes. FIX!!!!
         for slot_pair in prev_connects:
             source = slot_pair[0]
@@ -285,6 +285,7 @@ class Input_window(QtWidgets.QWidget):
             "Scale Z",
         ]
 
+
         attr_dict = {}
         for attr in outputs:
             attr_dict[attr] = attr.lower()[0] + attr.lower()[-1]
@@ -292,11 +293,10 @@ class Input_window(QtWidgets.QWidget):
         attr_dict["Visibility"] = "visibility"
         # attr_dict[""] = ""
 
-
         attr_dict_names = attr_dict.keys()
 
         # insert spacers
-        attr_dict_names = self.insert_gaps([3,7,11], attr_dict_names)
+        attr_dict_names = self.insert_gaps([3, 7, 11], attr_dict_names)
 
         return attr_dict_names, attr_dict
 
@@ -307,21 +307,17 @@ class Input_window(QtWidgets.QWidget):
 
         return attr_dict_names
 
-
-
-
     def connect_all_slots(self):
         create_or_delete = self.select_all_checkbox.isChecked()
         self.nodegraph.graph_scene.delete_all_edges(self.target.inputs[0])
         self.nodegraph.graph_scene.connect_all_slots(self.source, self.target, create_or_delete)
-
 
     def delete_all_lines(self):
         self.select_all_checkbox.setChecked(False)
         self.nodegraph.graph_scene.delete_all_edges(self.target._inputs[0])
 
     def toggle_invert_all(self):
-        invert_or_deinvert =  self.invert_checkbox.isChecked()
+        invert_or_deinvert = self.invert_checkbox.isChecked()
         self.nodegraph.graph_scene.invert_new_edges = invert_or_deinvert
         self.nodegraph.graph_scene.toggle_invert_all_edges(self.target._inputs[0], invert_or_deinvert)
 
@@ -329,8 +325,14 @@ class Input_window(QtWidgets.QWidget):
         invert = self.invert_checkbox.isChecked()
         # self.animation_copier.clear_target_channels()
         # try:
-        channel_dict = self.nodegraph.graph_scene.connections_dict
+        channel_dict = self.nodegraph.graph_scene.connections_dict.items()
         res = ""
+        if len(channel_dict) == 0:
+            warning = QtWidgets.QMessageBox()
+            warning.setText("No nodes selected")
+            warning.setIcon(QtWidgets.QMessageBox.Warning)
+            warning.exec()
+            return
         for key, val in self.nodegraph.graph_scene.connections_dict.items():
 
             res += f"|{key}|"
@@ -338,7 +340,22 @@ class Input_window(QtWidgets.QWidget):
                 res += f"[{v}]"
             res += ", "
         print(res)
-        #self.animation_copier.store_target(target_objects)
+        # self.animation_copier.store_target(target_objects)
+        # if len(self.target_objects) == 0 or not self.source
+
+        if len(self.animation_copier.source) == 0 or len(self.animation_copier.target) == 0:
+            if len(self.animation_copier.source) == 0:
+                warning = QtWidgets.QMessageBox()
+                warning.setText("No source selected")
+                warning.setIcon(QtWidgets.QMessageBox.Warning)
+                warning.exec()
+
+            if len(self.animation_copier.target) == 0:
+                warning = QtWidgets.QMessageBox()
+                warning.setText("No target selected")
+                warning.setIcon(QtWidgets.QMessageBox.Warning)
+                warning.exec()
+            return
 
         for obj in self.target_objects:
             self.animation_copier.store_target(obj)
@@ -348,10 +365,6 @@ class Input_window(QtWidgets.QWidget):
                 for target_chan in target_chan_list:
                     self.animation_copier.set_target_channel(target_chan.target_channel)
                     self.animation_copier.copyAnimation(invert=target_chan.invert)
-
-
-
-
 
         #
         # for obj in self.target_objects:
@@ -389,16 +402,17 @@ class Input_window(QtWidgets.QWidget):
             "Source",
             inputs=[],
             outputs=attr_dict_names,
-            width=180,
+            width=WIDTH,
             height=360,
             selectable=False,
             movable=False,
         )
+        print("hi")
         self.source.setPos(-200, 0)
+        self.source.refresh()
 
     def reset_target_node(self):
         # save connections
-
 
         self.nodegraph.graph_scene.delete_node(self.target)
         attr_dict_names, attr_dict = self.setup_attributes()
@@ -407,14 +421,13 @@ class Input_window(QtWidgets.QWidget):
             "Target",
             inputs=attr_dict_names,
             outputs=[],
-            width=180,
+            width=WIDTH,
             height=360,
             selectable=False,
             movable=False,
         )
         self.target.setPos(150, 0)
         # reconnect
-
 
     def set_source_object(self):
         sel = cmds.ls(sl=True)
@@ -428,7 +441,7 @@ class Input_window(QtWidgets.QWidget):
                     "Source",
                     inputs=[],
                     outputs=attr_dict_names,
-                    width=180,
+                    width=WIDTH,
                     height=360,
                     selectable=False,
                     movable=False,
@@ -448,8 +461,6 @@ class Input_window(QtWidgets.QWidget):
             warning.setText("No source item selected")
             warning.setIcon(QtWidgets.QMessageBox.Warning)
             warning.exec()
-
-
 
     def update_target_attributes(self):
         shared_targ_attrs = set()
@@ -471,7 +482,7 @@ class Input_window(QtWidgets.QWidget):
                 "Target",
                 inputs=attr_dict_names,
                 outputs=[],
-                width=180,
+                width=WIDTH,
                 height=360,
                 selectable=False,
                 movable=False,
@@ -479,8 +490,6 @@ class Input_window(QtWidgets.QWidget):
             self.target.setPos(150, 0)
         else:
             self.reset_target_node()
-
-
 
     def set_target_objects(self):
         print('hi')
@@ -506,7 +515,7 @@ class Input_window(QtWidgets.QWidget):
                         "Target",
                         inputs=attr_dict_names,
                         outputs=[],
-                        width=180,
+                        width=WIDTH,
                         height=360,
                         selectable=False,
                         movable=False,
@@ -514,7 +523,7 @@ class Input_window(QtWidgets.QWidget):
                     self.target.setPos(150, 0)
                     # self.target._height
                     print("DIFF", self.target.full_height - self.target._height)
-                    self.resize(self.width(), self.height()+self.target.full_height)
+                    self.resize(self.width(), self.height() + self.target.full_height)
                     print("no")
                 else:
                     print("ohhhh this should gos")
@@ -542,7 +551,6 @@ class Input_window(QtWidgets.QWidget):
                 self.target_objects = sel
                 self.update_target_title(self.target_objects)
 
-
     def update_target_title(self, target_objects):
         if len(target_objects) > 1:
             self.target._update_title(f"{len(self.target_objects)} Objects")
@@ -561,12 +569,6 @@ class Input_window(QtWidgets.QWidget):
             warning.setIcon(QtWidgets.QMessageBox.Warning)
             warning.exec()
 
-
-
-
-
-
-
         # test.store_source("pCube1")
         # test.store_target("pCube2")
         # test.set_source_channel("ty")
@@ -575,10 +577,7 @@ class Input_window(QtWidgets.QWidget):
         # self.source._update_title("Ryan")
 
 
-
-
 class NodeGraphWidget(QtWidgets.QWidget):
-
     """
     Handles node graph view
     """
@@ -588,13 +587,13 @@ class NodeGraphWidget(QtWidgets.QWidget):
         self.name = name
         self.parent = parent
         self.attributes = attributes
-        
+
         # convert_func = lambda name:name.lower()[0] + name.lower()[-1]
         self.graph_scene = Scene(parent=self.parent,
                                  nodegraph_widget=self,
                                  multiple_input_allowed=False,
                                  # convert = convert_func,
-                                 output_template = output_template,
+                                 output_template=output_template,
                                  attributes=self.attributes)
         self.graph_view = View(self.graph_scene, parent=self.parent, is_zoom=False, scale=0.85)
         self.graph_view.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
