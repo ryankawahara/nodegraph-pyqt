@@ -28,11 +28,18 @@ class Scene(QtWidgets.QGraphicsScene):
 
     """
 
-    def __init__(self, parent=None, nodegraph_widget=None, multiple_input_allowed=False, convert=None, output_template=None, attributes=None):
+    def __init__(self,
+                 parent=None,
+                 nodegraph_widget=None,
+                 multiple_input_allowed=False,
+                 convert=None, output_template=None,
+                 attributes=None,
+                 drag_to_connect=False):
         """Create an instance of this class
 
         """
         QtWidgets.QGraphicsScene.__init__(self, parent)
+        self.drag_to_connect = drag_to_connect
         self.parent = parent
         self.convert = convert
         self.output_template = output_template
@@ -413,11 +420,6 @@ class Scene(QtWidgets.QGraphicsScene):
                     target = target_name
 
                 newObj = self.output_template.add(source, target, invert_source)
-                # print("INVERT", newObj.invert)
-                #
-                # print(self.output_template.connection_dict)
-                # for key, item in self.output_template.connection_dict.items():
-                #     print(key, item[0].invert)
 
 
             connection_dict = self.output_template.connection_dict
@@ -751,15 +753,25 @@ class Scene(QtWidgets.QGraphicsScene):
 
             # change between modes
             # if you realize that you're over a valid node, set draw_line to be true (but then you have to fix it after)
-            if release_mode and selected[0] != self._interactive_edge._source_slot.parent:
-                # print(selected[0].name)
-                # print("WHO", selected[0] == target_node.parent)
-                self.stop_interactive_edge(connect_to=target_node)
+
+            if self.drag_to_connect:
                 if self.draw_line == True:
-                    self.draw_line = False
-            elif self.draw_line == False:
-                # print("hello there")
-                self.stop_interactive_edge(connect_to=target_node)
+                    self.stop_interactive_edge(connect_to=target_node)
+                    if self.draw_line == True:
+                        self.draw_line = False
+
+            else:
+
+                if release_mode and selected[0] != self._interactive_edge._source_slot.parent:
+                    # print(selected[0].name)
+                    # print("WHO", selected[0] == target_node.parent)
+                    self.stop_interactive_edge(connect_to=target_node)
+                    if self.draw_line == True:
+                        self.draw_line = False
+                elif self.draw_line == False:
+                    self.stop_interactive_edge(connect_to=target_node)
+                    if self.draw_line == True:
+                        self.draw_line = False
 
         # Edge refresh mode?
         if self._is_refresh_edges:
