@@ -53,6 +53,8 @@ class Node(QtWidgets.QGraphicsItem):
 
         self.label_rect_size = None
 
+        self.clicks = 0
+
         if selectable:
             self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable)
 
@@ -370,13 +372,6 @@ class Node(QtWidgets.QGraphicsItem):
 
             # Output
             alignment = QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight
-            # rect = QtCore.QRectF(self._width / 2,
-            #                      self._output._rect.top(),
-            #                      width,
-            #                      height)
-            # painter.drawText(rect, alignment, "out")
-            # painter.setBrush(QtCore.Qt.NoBrush)
-            # painter.drawRect(rect)
 
             for anoutput in self._outputs:
                 rect = QtCore.QRectF(self._width / 2 + self._outline,
@@ -452,7 +447,15 @@ class Node(QtWidgets.QGraphicsItem):
         # Call normal behavior
         QtWidgets.QGraphicsItem.hoverLeaveEvent(self, event)
 
-    def mousePressEvent(self, event):
+    def mouseDoubleClickEvent(self, event):
+        # selected = self.items(event.scenePos())
+        print("hi")
+
+        # if isinstance(selected[0], Node):
+        #         node = selected[0]
+        #         print(node)
+
+    def mousePressEvent(self, event, regular=True):
         """Re-implement mousePressEvent from base class
 
         :param event: Mouse event
@@ -461,24 +464,54 @@ class Node(QtWidgets.QGraphicsItem):
         """
 
         buttons = event.buttons()
+        clicked_zone = event.pos()
         # modifiers = event.modifiers()
+        if regular:
 
-        if buttons == QtCore.Qt.LeftButton:
-            # if self._output._rect.contains(event.pos()):
-            #     mouse_pos = self.mapToScene(event.pos())
-            #     self.scene().start_interactive_edge(self._output, mouse_pos)
-            #     event.accept()
-            #     return
+            if buttons == QtCore.Qt.LeftButton:
+                self.scene().toggle_connection_clicked()
 
+                for anoutput in self._outputs:
+                    left_margin = PySide2.QtCore.QMarginsF(self.label_rect_size[0], 0, 0, 0)
+                    start_zone = anoutput._rect + left_margin
+                    if start_zone.contains(event.pos()):
+                        mouse_pos = self.mapToScene(event.pos())
+                        self._update_hover_slot(anoutput)
+                        if self.scene().draw_line:
+                            self.scene().start_interactive_edge(anoutput, mouse_pos)
+                            self.scene().store_source_node(anoutput)
 
+                            self.clicks+=1
+                        event.accept()
+                        return
+                for aninput in self._inputs:
+                    right_margin = PySide2.QtCore.QMarginsF(0, 0, self.label_rect_size[0], 0)
+                    end_zone = aninput._rect + right_margin
+                    if end_zone.contains(event.pos()):
+                        mouse_pos = self.mapToScene(event.pos())
+                        self._update_hover_slot(aninput)
+
+                        if self.scene().draw_line:
+                            self.scene().start_interactive_edge(aninput, mouse_pos)
+                            # event.accept()
+                            self.clicks+=1
+                        event.accept()
+
+                        return
+        else:
             for anoutput in self._outputs:
+
                 # need to add anoutput_.rect + label width
                 left_margin = PySide2.QtCore.QMarginsF(self.label_rect_size[0], 0, 0, 0)
                 start_zone = anoutput._rect + left_margin
-                if start_zone.contains(event.pos()):
-                    mouse_pos = self.mapToScene(event.pos())
+                # print(start_zone, event.scenePos(), start_zone.contains(event.scenePos()))
+                if start_zone.contains(event.scenePos()):
+                    mouse_pos = self.mapToScene(event.scenePos())
+                    print(mouse_pos, event.scenePos())
                     self._update_hover_slot(anoutput)
                     self.scene().start_interactive_edge(anoutput, mouse_pos)
+                    print("NOT GETTING HERE")
+
                     self.scene().store_source_node(anoutput)
                     # print(self.scene().source_node._name)
                     event.accept()
@@ -486,33 +519,16 @@ class Node(QtWidgets.QGraphicsItem):
             for aninput in self._inputs:
                 right_margin = PySide2.QtCore.QMarginsF(0, 0, self.label_rect_size[0], 0)
                 end_zone = aninput._rect + right_margin
-                if end_zone.contains(event.pos()):
-                    mouse_pos = self.mapToScene(event.pos())
+                if end_zone.contains(event.scenePos()):
+                    mouse_pos = self.mapToScene(event.scenePos())
                     self.scene().start_interactive_edge(aninput, mouse_pos)
                     event.accept()
                     return
 
         QtWidgets.QGraphicsItem.mousePressEvent(self, event)
 
-    # def mouseReleaseEvent(self, event):
-    #     """Re-implement mouseReleaseEvent from base class
 
-    #     :param event: Mouse event
-    #     :type event: :class:`QtWidgets.QGraphicsSceneMouseEvent`
-
-    #     """
-    #     buttons = event.button()
-
-    #     if buttons == QtCore.Qt.LeftButton:
-    #         # if self._output._rect.contains(event.pos()):
-    #         print(self._output._rect.contains(event.pos()))
-    #         print("DROP")
-    #         print(event.pos())
-    #         print(self._output._rect)
-
-    #     QtWidgets.QGraphicsItem.mouseReleaseEvent(self, event)
-
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event, regular=True):
         """Re-implement mouseMoveEvent from base class
 
         :param event: Mouse event
@@ -524,25 +540,42 @@ class Node(QtWidgets.QGraphicsItem):
 
         # print("%s : mouse move event. Hover slot: %s" %(self._name, self._hover_slot))
         # print(self.scene().source_node is not None)
+        if regular:
+            if self.scene().source_node:
+                if self.scene().is_interactive_edge:
+                    # Edge creation mode
+                    # print("Node Name: %s, pos: %s" % (self._name, event.pos()))
+                    event.accept()
+                    return
 
-        if self.scene().source_node:
-            if self.scene().is_interactive_edge:
-                # Edge creation mode
-                # print("Node Name: %s, pos: %s" % (self._name, event.pos()))
-                event.accept()
-                return
+            elif buttons == QtCore.Qt.LeftButton:
 
-        elif buttons == QtCore.Qt.LeftButton:
+                if self.scene().is_interactive_edge:
 
-            if self.scene().is_interactive_edge:
+                    # Edge creation mode
 
-                # Edge creation mode
+                    # print("Node Name: %s, pos: %s" % (self._name, event.pos()))
+                    event.accept()
+                    return
 
-                # print("Node Name: %s, pos: %s" % (self._name, event.pos()))
-                event.accept()
-                return
+        else:
+            # print("right here", self.scene().source_node, self.scene().is_interactive_edge)
+            if self.scene().source_node:
+                if self.scene().is_interactive_edge:
+                    event.accept()
+                    return
+            else:
+                if self.scene().is_interactive_edge:
+                    print(self.scene().is_interactive_edge)
+
+                    # Edge creation mode
+
+                    # print("Node Name: %s, pos: %s" % (self._name, event.pos()))
+                    event.accept()
+                    return
 
         QtWidgets.QGraphicsItem.mouseMoveEvent(self, event)
+
 
     def refresh(self, refresh_edges=True):
         """Refreh node
