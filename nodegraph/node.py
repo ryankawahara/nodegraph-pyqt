@@ -106,7 +106,6 @@ class Node(QtWidgets.QGraphicsItem):
     @property
     def full_height(self):
         nodes = max(len(self._outputs), len(self._inputs))
-        print("nodes", nodes)
         slot_height = self._slot_radius * 2 + self._outline
 
 
@@ -137,7 +136,6 @@ class Node(QtWidgets.QGraphicsItem):
 
     def _get_all_slot_heights(self, slots):
         slot_height = self._slot_radius * 2 + self._outline
-        # print("using this height", self._height)
 
         base_y = self._height / 2 + self._label_height / 2 + self._outline / 2
 
@@ -170,7 +168,6 @@ class Node(QtWidgets.QGraphicsItem):
 
     def _draw_slots(self, slots, output):
         slot_height = self._slot_radius * 2 + self._outline
-        # print("using this height", self._height)
         new_height = self._get_all_slot_heights(slots)
 
         base_y = new_height / 2 + self._label_height + self._outline
@@ -276,7 +273,6 @@ class Node(QtWidgets.QGraphicsItem):
         painter.setPen(QtGui.QPen(fill_brush, self._outline))
 
         # Draw primary shape
-        # print("using this height", self._height)
         painter.drawRect(0, 0, self._width, self._height + self._outline + self._slot_radius * 2)
 
         # Draw label background
@@ -289,9 +285,8 @@ class Node(QtWidgets.QGraphicsItem):
                                    self._label_height - self._outline / 2)
         self.label_rect_size = (label_rect.width(), label_rect.height())
         painter.drawRect(label_rect)
-
         # Draw text
-        if lod >= 0.4:
+        if lod >= 0.2:
             font = QtGui.QFont("Arial", 14)
             font.setStyleStrategy(QtGui.QFont.ForceOutline)
             painter.setFont(font)
@@ -315,12 +310,6 @@ class Node(QtWidgets.QGraphicsItem):
             painter.setPen(QtGui.QPen(fill_brush, self._outline))
 
             if lod >= 0.35:
-                # Draw output (Ellipse)
-                # if self._hover_slot == self._output:
-                #     # Hover color should be driven by slot type
-                #     painter.setBrush(hover_color)
-                # painter.drawEllipse(self._output._rect)
-
                 for anoutput in self._outputs:
                     if self._hover_slot == anoutput:
                         # painter.setBrush(hover_color)
@@ -338,10 +327,6 @@ class Node(QtWidgets.QGraphicsItem):
                         painter.setBrush(hover_normal)
                     painter.drawEllipse(aninput.rect)
             else:
-                # Draw output (Rectangle)
-                # if self._hover_slot == self._output:
-                #     painter.setBrush(hover_color)
-                # painter.drawRect(self._output._rect)
 
                 for anoutput in self._outputs:
                     if self._hover_slot == anoutput:
@@ -350,7 +335,7 @@ class Node(QtWidgets.QGraphicsItem):
                         painter.setBrush(hover_normal)
                     painter.drawRect(anoutput.rect)
 
-                # Drae input (Rectangle)
+                # Draw input (Rectangle)
                 for aninput in self._inputs:
                     if self._hover_slot == aninput:
                         painter.setBrush(hover_color)
@@ -361,7 +346,7 @@ class Node(QtWidgets.QGraphicsItem):
             self.setAcceptHoverEvents(False)
 
         # Draw slot labels
-        if lod >= 0.5:
+        if lod >= 0.25:
             font = QtGui.QFont("Arial", 11)
             font.setStyleStrategy(QtGui.QFont.ForceOutline)
             painter.setFont(font)
@@ -388,14 +373,7 @@ class Node(QtWidgets.QGraphicsItem):
                                      width,
                                      height)
                 painter.drawText(rect, alignment, aninput.name)
-                # painter.setBrush(QtCore.Qt.NoBrush)
-                # painter.drawRect(rect)
 
-        # # Draw debug
-        # if DEBUG:
-        #     painter.setBrush(QtGui.QBrush())
-        #     painter.setPen(QtGui.QColor(255, 0, 0))
-        #     painter.drawRect(self.boundingRect())
 
         return
 
@@ -406,26 +384,16 @@ class Node(QtWidgets.QGraphicsItem):
         :type event: :class:`QtWidgets.QMouseEvent`
 
         """
-        # print("NODE %s hover move" % self._name)
 
         left_margin = PySide2.QtCore.QMarginsF(self.label_rect_size[0]/2, 0, 0, 0)
 
         right_margin = PySide2.QtCore.QMarginsF(0, 0, self.label_rect_size[0]/2, 0)
 
-        # start_zone = anoutput._rect + left_margin
-        # try:
-        #     print("original", self._outputs[0]._rect + left_margin)
-        # except:
-        #     pass
-
         his = [i for i in self._inputs if (i._rect + right_margin).contains(event.pos())]
         hos =  [i for i in self._outputs if (i._rect + left_margin).contains(event.pos())]
-        # print("Node MOUSE", event.pos())
         if hos:
-            # print("output", hos[0]._name)
             self._update_hover_slot(hos[0])
         elif his:
-            # print("input", his[0]._rect)
             self._update_hover_slot(his[0])
         else:
             self._update_hover_slot(False)
@@ -447,14 +415,6 @@ class Node(QtWidgets.QGraphicsItem):
         # Call normal behavior
         QtWidgets.QGraphicsItem.hoverLeaveEvent(self, event)
 
-    def mouseDoubleClickEvent(self, event):
-        # selected = self.items(event.scenePos())
-        print("hi")
-
-        # if isinstance(selected[0], Node):
-        #         node = selected[0]
-        #         print(node)
-
     def mousePressEvent(self, event, regular=True):
         """Re-implement mousePressEvent from base class
 
@@ -465,7 +425,6 @@ class Node(QtWidgets.QGraphicsItem):
 
         buttons = event.buttons()
         clicked_zone = event.pos()
-        # modifiers = event.modifiers()
         if regular:
 
             if buttons == QtCore.Qt.LeftButton:
@@ -501,19 +460,14 @@ class Node(QtWidgets.QGraphicsItem):
         else:
             for anoutput in self._outputs:
 
-                # need to add anoutput_.rect + label width
                 left_margin = PySide2.QtCore.QMarginsF(self.label_rect_size[0], 0, 0, 0)
                 start_zone = anoutput._rect + left_margin
-                # print(start_zone, event.scenePos(), start_zone.contains(event.scenePos()))
                 if start_zone.contains(event.scenePos()):
                     mouse_pos = self.mapToScene(event.scenePos())
-                    print(mouse_pos, event.scenePos())
                     self._update_hover_slot(anoutput)
                     self.scene().start_interactive_edge(anoutput, mouse_pos)
-                    print("NOT GETTING HERE")
 
                     self.scene().store_source_node(anoutput)
-                    # print(self.scene().source_node._name)
                     event.accept()
                     return
             for aninput in self._inputs:
@@ -536,15 +490,11 @@ class Node(QtWidgets.QGraphicsItem):
 
         """
         buttons = event.buttons()
-        # modifiers = event.modifiers()
 
-        # print("%s : mouse move event. Hover slot: %s" %(self._name, self._hover_slot))
-        # print(self.scene().source_node is not None)
         if regular:
             if self.scene().source_node:
                 if self.scene().is_interactive_edge:
                     # Edge creation mode
-                    # print("Node Name: %s, pos: %s" % (self._name, event.pos()))
                     event.accept()
                     return
 
@@ -554,23 +504,17 @@ class Node(QtWidgets.QGraphicsItem):
 
                     # Edge creation mode
 
-                    # print("Node Name: %s, pos: %s" % (self._name, event.pos()))
                     event.accept()
                     return
 
         else:
-            # print("right here", self.scene().source_node, self.scene().is_interactive_edge)
             if self.scene().source_node:
                 if self.scene().is_interactive_edge:
                     event.accept()
                     return
             else:
                 if self.scene().is_interactive_edge:
-                    print(self.scene().is_interactive_edge)
-
                     # Edge creation mode
-
-                    # print("Node Name: %s, pos: %s" % (self._name, event.pos()))
                     event.accept()
                     return
 
@@ -609,7 +553,6 @@ class NodeSlot(object):
         """Instance this class
 
         """
-        # QtWidgets.QGraphicsItem.__init__(self, parent=parent, scene=scene)
         self._name = name
         self.parent = parent
         self._family = family or self.INPUT
