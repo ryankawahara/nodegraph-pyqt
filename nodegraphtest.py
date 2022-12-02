@@ -7,7 +7,6 @@ from rk_copyAnimation import CopyAnimation
 import copy
 import sys
 
-# import networkx
 from Qt import QtWidgets, QtGui, QtCore
 from nodegraph.scene import Scene
 from nodegraph.view import View
@@ -17,12 +16,17 @@ WIDTH = 220
 class ConnectionCollection:
     def __init__(self):
         self.connection_dict = {}
-        print("hello there")
 
     def add(self, source_channel, target_channel, invert):
+        """
+        Adds connection
+        :param source_channel: Source connection
+        :param target_channel: Target connection
+        :param invert: Whether connection is inverted
+        :return: the new object
+        """
         newObj = ConnectionItem(target_channel, invert)
         if source_channel in self.connection_dict:
-            # if target_channel not in self.connection_dict[source_channel]:
             if not self.contains(target_channel, source_channel):
                 self.connection_dict[source_channel].append(newObj)
         else:
@@ -33,33 +37,23 @@ class ConnectionCollection:
     def remove(self, remove_source_name, remove_target_name):
         if remove_source_name in self.connection_dict:
             output_list = self.connection_dict[remove_source_name]
-            # for item in output_list:
-            #     print(str(item))
+
             if len(output_list) < 2:
                 self.connection_dict.pop(remove_source_name)
             else:
-                # print(remove_target_name)
                 index = self.search_item_by_name(remove_target_name, output_list)
-                # print(index)
-
                 del output_list[index]
-                # output_list.remove(index)
             return True
         else:
             return False
 
     def contains(self, search, source_channel):
         for val in self.connection_dict[source_channel]:
-            # print(search, val, search in val)
             if search in val:
                 return True
-            # print('not found')
         return False
 
     def search_item_by_name(self, target_channel, output_list):
-        # print("searching for", target_channel)
-        # for item in output_list:
-        #     print("checking", str(item))
         for item in output_list:
             if item.target_channel == target_channel:
                 return output_list.index(item)
@@ -68,9 +62,7 @@ class ConnectionCollection:
     def toggle_invert(self, source_channel, target_channel):
         item_list = self.connection_dict[source_channel]
         index = self.search_item_by_name(target_channel, item_list)
-        # print('before',item_list[index].invert )
         item_list[index].invert = not item_list[index].invert
-        # print('after', item_list[index].invert)
 
     def set_invert(self, source_channel, target_channel, invert):
         item_list = self.connection_dict[source_channel]
@@ -95,21 +87,18 @@ class ConnectionItem:
 class Input_window(QtWidgets.QWidget):
     def __init__(self, output_template=None):
         super(Input_window, self).__init__(parent=None)
-
+        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.output_template = output_template
         self.setObjectName("Copy Animation")
         self.resize(500, 450)
         self.setMinimumSize(500, 350)
-        self.setMaximumWidth(500)
         self.gridLayout = QtWidgets.QGridLayout(self)
         self.gridLayout.setObjectName("gridLayout")
         self.set_source = QtWidgets.QPushButton(self)
         self.set_source.setObjectName("set_source")
-        # self.gridLayout.addWidget(self.set_source, 0, 0, 1, 1)
         self.gridLayout.addWidget(self.set_source, 1, 0, 1, 1)
         self.set_target = QtWidgets.QPushButton(self)
         self.set_target.setObjectName("set_target")
-        # self.gridLayout.addWidget(self.set_target, 0, 1, 1, 1)
         self.gridLayout.addWidget(self.set_target, 1, 1, 1, 1)
 
         self.animation_copier = CopyAnimation()
@@ -126,12 +115,10 @@ class Input_window(QtWidgets.QWidget):
         self.widget.setSizePolicy(sizePolicy)
 
         self.gridLayout.addWidget(self.widget, 3, 0, 1, 2)
-        # self.gridLayout.addWidget(self.widget, 2, 0, 1, 2)
         self.window_size = self.widget.size()
         attr_dict_names, attr_dict = self.setup_attributes()
         self.nodegraph = NodeGraphWidget("main", parent=self, output_template=self.output_template,
                                          attributes=attr_dict)
-        # self.nodegraph.mousePressEvent = lambda event: cmds.select(clear=True)
         self.gridLayout.addWidget(self.nodegraph, 3, 0, 1, 2)
 
         self.user_defined_targ_attrs = set()
@@ -145,8 +132,8 @@ class Input_window(QtWidgets.QWidget):
             selectable=False,
             movable=False,
         )
+
         self.source.setPos(-200, 0)
-        # self.source.setPos(self.nodegraph.graph_scene.width(), 0)
 
         self.target = self.nodegraph.graph_scene.create_node(
             "Target",
@@ -172,7 +159,6 @@ class Input_window(QtWidgets.QWidget):
         self.invert_checkbox = QtWidgets.QCheckBox(self)
         self.invert_checkbox.setObjectName("invert_checkbox")
         self.horizontalLayout.addWidget(self.invert_checkbox, 0, QtCore.Qt.AlignHCenter)
-        # self.gridLayout.addLayout(self.horizontalLayout, 1, 0, 1, 1)
         self.gridLayout.addLayout(self.horizontalLayout, 2, 0, 1, 1)
 
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
@@ -210,36 +196,10 @@ class Input_window(QtWidgets.QWidget):
         self.invert_checkbox.stateChanged.connect(self.toggle_invert_all)
         self.select_all_checkbox.clicked.connect(self.connect_all_slots)
         self.clear_button.clicked.connect(self.delete_all_lines)
-        # self.gridLayout.addWidget(self.clear_button, 1, 1, 1, 1)
         self.gridLayout.addWidget(self.clear_button, 0, 0, 1, 2)
 
         QtCore.QMetaObject.connectSlotsByName(self)
 
-    # def resizeEvent(self, event: QtGui.QResizeEvent):
-    #     print(self.widget.size())
-    #     old_size = self.window_size
-    #     old_area = old_size.width() * old_size.height()
-    #     new_size = self.widget.size()
-    #     new_area = new_size.width() * new_size.height()
-    #     resize_scale = new_area/old_area
-    #     print(new_area, old_area, new_area/old_area)
-    #     self.window_size = new_size
-    #
-    #     view_center = self.nodegraph.graph_view.mapToScene(self.nodegraph.graph_view.viewport().rect().center())
-    #     center = self.nodegraph.graph_view.sceneRect().center()
-    #
-    #     print(f"view center: {view_center}, center: {center}")
-    #
-    #     view_rect = self.nodegraph.graph_view.mapToScene(self.nodegraph.graph_view.viewport().rect())
-    #     width = view_rect.boundingRect().width()
-    #
-    #
-    #     # print("center", view_rect.center())
-    #     diff = width-96
-    #     # self.target.moveBy(25,0)
-    #     # print("POS", 150+diff)
-    #     # self.nodegraph.graph_view.scale_center_view(resize_scale)
-    #     # source.setPos(self.nodegraph.graph_scene.width() - 200, 0)
 
     def toggle_all_attributes(self):
 
@@ -252,7 +212,6 @@ class Input_window(QtWidgets.QWidget):
         self.nodegraph.graph_scene.delete_all_edges(self.target.inputs[0])
         self.update_target_attributes()
 
-        # does not work if more than 1 is connected. deletes. FIX!!!!
         for slot_pair in prev_connects:
             source = slot_pair[0]
             target = None
@@ -269,7 +228,6 @@ class Input_window(QtWidgets.QWidget):
 
     def keyPressEvent(self, event):
         if event.key() in [QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace]:
-            print("goodbye")
             self.select_all_checkbox.setChecked(False)
 
     def setup_attributes(self):
@@ -285,13 +243,11 @@ class Input_window(QtWidgets.QWidget):
             "Scale Z",
         ]
 
-
         attr_dict = {}
         for attr in outputs:
             attr_dict[attr] = attr.lower()[0] + attr.lower()[-1]
 
         attr_dict["Visibility"] = "visibility"
-        # attr_dict[""] = ""
 
         attr_dict_names = attr_dict.keys()
 
@@ -323,14 +279,15 @@ class Input_window(QtWidgets.QWidget):
 
     def execute(self):
         invert = self.invert_checkbox.isChecked()
-        # self.animation_copier.clear_target_channels()
-        # try:
+
         channel_dict = self.nodegraph.graph_scene.connections_dict.items()
         res = ""
         if len(channel_dict) == 0:
             warning = QtWidgets.QMessageBox()
             warning.setText("No nodes selected")
             warning.setIcon(QtWidgets.QMessageBox.Warning)
+            warning.setWindowFlags(warning.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+
             warning.exec()
             return
         for key, val in self.nodegraph.graph_scene.connections_dict.items():
@@ -339,23 +296,6 @@ class Input_window(QtWidgets.QWidget):
             for v in val:
                 res += f"[{v}]"
             res += ", "
-        print(res)
-        # self.animation_copier.store_target(target_objects)
-        # if len(self.target_objects) == 0 or not self.source
-
-        if len(self.animation_copier.source) == 0 or len(self.animation_copier.target) == 0:
-            if len(self.animation_copier.source) == 0:
-                warning = QtWidgets.QMessageBox()
-                warning.setText("No source selected")
-                warning.setIcon(QtWidgets.QMessageBox.Warning)
-                warning.exec()
-
-            if len(self.animation_copier.target) == 0:
-                warning = QtWidgets.QMessageBox()
-                warning.setText("No target selected")
-                warning.setIcon(QtWidgets.QMessageBox.Warning)
-                warning.exec()
-            return
 
         for obj in self.target_objects:
             self.animation_copier.store_target(obj)
@@ -366,22 +306,22 @@ class Input_window(QtWidgets.QWidget):
                     self.animation_copier.set_target_channel(target_chan.target_channel)
                     self.animation_copier.copyAnimation(invert=target_chan.invert)
 
-        #
-        # for obj in self.target_objects:
-        #     self.animation_copier.store_target(obj)
-        #
-        #     for src, targets in channel_dict.items():
-        #         self.animation_copier.clear_target_channels()
-        #         self.animation_copier.set_source_channel(src)
-        #         for trgt in targets:
-        #             print(src, trgt)
-        #             self.animation_copier.set_target_channel(trgt)
-        #             print(self.animation_copier.source, self.animation_copier.target, self.animation_copier.selectedTargets, self.animation_copier.sourceChannel)
-        #
-        #             self.animation_copier.copyAnimation()
-        #
-        # except UnboundLocalError as e:
-        #     pass
+        if len(self.animation_copier.source) == 0 or len(self.animation_copier.target) == 0:
+            if len(self.animation_copier.source) == 0:
+                warning = QtWidgets.QMessageBox()
+                warning.setText("No source selected")
+                warning.setIcon(QtWidgets.QMessageBox.Warning)
+                warning.setWindowFlags(warning.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+                warning.exec()
+
+
+            if len(self.animation_copier.target) == 0:
+                warning = QtWidgets.QMessageBox()
+                warning.setText("No target selected")
+                warning.setIcon(QtWidgets.QMessageBox.Warning)
+                warning.setWindowFlags(warning.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+                warning.exec()
+            return
 
     def add_user_defined_attributes(self, node, ud_attr):
         self.nodegraph.graph_scene.delete_node(node)
@@ -407,13 +347,12 @@ class Input_window(QtWidgets.QWidget):
             selectable=False,
             movable=False,
         )
-        print("hi")
         self.source.setPos(-200, 0)
         self.source.refresh()
 
     def reset_target_node(self):
-        # save connections
 
+        # save connections
         self.nodegraph.graph_scene.delete_node(self.target)
         attr_dict_names, attr_dict = self.setup_attributes()
 
@@ -427,7 +366,6 @@ class Input_window(QtWidgets.QWidget):
             movable=False,
         )
         self.target.setPos(150, 0)
-        # reconnect
 
     def set_source_object(self):
         sel = cmds.ls(sl=True)
@@ -447,25 +385,33 @@ class Input_window(QtWidgets.QWidget):
                     movable=False,
                 )
                 self.source.setPos(-200, 0)
+                self.nodegraph.graph_view.fitToItemSize()
             else:
                 # reset to default
                 self.reset_source_node()
             self.animation_copier.clear_source()
             self.animation_copier.store_source(source_item)
             self.source._update_title(source_item)
-
         else:
             self.source._update_title("Source")
             self.reset_source_node()
             warning = QtWidgets.QMessageBox()
             warning.setText("No source item selected")
             warning.setIcon(QtWidgets.QMessageBox.Warning)
+            warning.setWindowFlags(warning.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
             warning.exec()
+
 
     def update_target_attributes(self):
         shared_targ_attrs = set()
+        for obj in self.target_objects[1:]:
+            print(obj)
         if len(self.target_objects) > 0:
-            shared_targ_attrs = set(cmds.listAttr(self.target_objects[0], ud=True))
+            shared_targ_attrs = cmds.listAttr(self.target_objects[0], ud=True)
+            if shared_targ_attrs:
+                shared_targ_attrs = set(shared_targ_attrs)
+            else:
+                shared_targ_attrs = set()
             if self.all_attributes.isChecked() == False:
                 for obj in self.target_objects[1:]:
                     shared_targ_attrs.intersection_update(cmds.listAttr(obj, ud=True))
@@ -488,17 +434,20 @@ class Input_window(QtWidgets.QWidget):
                 movable=False,
             )
             self.target.setPos(150, 0)
+            self.nodegraph.graph_view.fitToItemSize()
         else:
             self.reset_target_node()
+            self.nodegraph.graph_view.fitToItemSize()
+
 
     def set_target_objects(self):
-        print('hi')
         self.animation_copier.clear_target()
         sel = cmds.ls(sl=True)
 
         if sel:
             custom_attr = cmds.listAttr(sel[0], ud=True)
             if custom_attr:
+
                 shared_targ_attrs = set(custom_attr)
 
                 if self.all_attributes.isChecked() == False:
@@ -521,37 +470,27 @@ class Input_window(QtWidgets.QWidget):
                         movable=False,
                     )
                     self.target.setPos(150, 0)
-                    # self.target._height
-                    print("DIFF", self.target.full_height - self.target._height)
-                    self.resize(self.width(), self.height() + self.target.full_height)
-                    print("no")
+                    self.nodegraph.graph_view.fitToItemSize()
                 else:
-                    print("ohhhh this should gos")
                     self.reset_target_node()
 
                 self.target_objects = sel
+
                 self.update_target_title(self.target_objects)
-                # if len(sel) > 1:
-                #     self.target._update_title(f"{len(self.target_objects)} Objects")
-                #     objs = ''.join(f'{obj}\n' for obj in self.target_objects)
-                #     objs = objs.strip()
-                #     self.target.setToolTip(objs)
-                # elif len(sel) == 1:
-                #     self.target._update_title(self.target_objects[0])
-                #
-                # else:
-                #     self.target._update_title("Target")
-                #     self.reset_target_node()
-                #     warning = QtWidgets.QMessageBox()
-                #     warning.setText("No target items selected")
-                #     warning.setIcon(QtWidgets.QMessageBox.Warning)
-                #     warning.exec()
+
             else:
                 self.reset_target_node()
                 self.target_objects = sel
                 self.update_target_title(self.target_objects)
+        else:
+            warning = QtWidgets.QMessageBox()
+            warning.setText("No items selected")
+            warning.setIcon(QtWidgets.QMessageBox.Warning)
+            warning.setWindowFlags(warning.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+            warning.exec()
 
     def update_target_title(self, target_objects):
+
         if len(target_objects) > 1:
             self.target._update_title(f"{len(self.target_objects)} Objects")
             objs = ''.join(f'{obj}\n' for obj in self.target_objects)
@@ -567,14 +506,10 @@ class Input_window(QtWidgets.QWidget):
             warning = QtWidgets.QMessageBox()
             warning.setText("No target items selected")
             warning.setIcon(QtWidgets.QMessageBox.Warning)
+            warning.setWindowFlags(warning.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
             warning.exec()
 
-        # test.store_source("pCube1")
-        # test.store_target("pCube2")
-        # test.set_source_channel("ty")
-        # test.set_target_channel("tz")
-        # test.copyAnimation()
-        # self.source._update_title("Ryan")
+
 
 
 class NodeGraphWidget(QtWidgets.QWidget):
@@ -588,24 +523,19 @@ class NodeGraphWidget(QtWidgets.QWidget):
         self.parent = parent
         self.attributes = attributes
 
-        # convert_func = lambda name:name.lower()[0] + name.lower()[-1]
         self.graph_scene = Scene(parent=self.parent,
                                  nodegraph_widget=self,
                                  multiple_input_allowed=False,
-                                 # convert = convert_func,
                                  output_template=output_template,
-                                 attributes=self.attributes)
+                                 attributes=self.attributes,
+                                 drag_to_connect=False)
         self.graph_view = View(self.graph_scene, parent=self.parent, is_zoom=False, scale=0.85)
         self.graph_view.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
-        # self.graph_view.mousePressedEvent = lambda event: cmds.select(clear=True)
-        # find out why it's not scaling!!!!
+
         self.horizontal_layout = QtWidgets.QHBoxLayout(self)
         self.horizontal_layout.addWidget(self.graph_view)
 
         self.setMouseTracking(True)
-
-    # def mousePressEvent(self, event):
-    #     cmds.select(clear=True)
 
 
 if __name__ == "__main__":
@@ -619,4 +549,3 @@ if __name__ == "__main__":
     box = Input_window(output_template=ConnectionCollection())
     box.show()
 
-# add break node shortcut
